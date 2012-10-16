@@ -1,9 +1,6 @@
 ==Introduction==
 UniFi-Lab is collection of utilities that aims to help managing UniFi controller. UniFi-Lab interacts with UniFi controller through cURL, which is like a text-version browser, and is controlled by python scripts. You can think of UniFi-Lab as a robot IT that always monitors the controller and takes actions when needed.
 
-==Forum Discussion Thread==
-http://forum.ubnt.com/showthread.php?t=60150
-
 ==Features==
 ===MAC Addresses White List===
 The UniFi controller will block any MAC that is not on the list.
@@ -21,7 +18,7 @@ The controller will reboot selected APs on the specified days and time.
 
 ==Prerequisites==
 The UniFi-Lab utility needs to interact with the UniFi controller, therefore '''UniFi controller must be up and running'''. It also needs these two software installed
-* Python
+* Python 2.x
 * Curl
 Below we demonstrate installation steps in different operating systems.
 
