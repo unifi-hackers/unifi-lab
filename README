@@ -1,42 +1,63 @@
 # Introduction
-UniFi-Lab is collection of utilities that aims to help managing UniFi controller. UniFi-Lab interacts with UniFi controller through cURL, which is like a text-version browser, and is controlled by python scripts. You can think of UniFi-Lab as a robot IT that always monitors the controller and takes actions when needed.
+UniFi-Lab is collection of utilities that aims to help managing UniFi 
+controller. UniFi-Lab interacts with UniFi controller through cURL, which is 
+like a text-version browser, and is controlled by python scripts. You can think 
+of UniFi-Lab as a robot IT that always monitors the controller and takes actions
+when needed.
 
 # Features
 ## MAC Addresses White List
 The UniFi controller will block any MAC that is not on the list.
 
 ## Poor Signals Reconnect
-The UniFi controller will kick (aka reconnect) any stations that fall below assigned RSSI (or Signal Strength, depends on the configuration) threshold for assigned period. The idea is that, by forcing a station to reconnect, the station often goes to an AP with better signals to its eyes, therefore gets better performances.
+The UniFi controller will kick (aka reconnect) any stations that fall below 
+assigned RSSI (or Signal Strength, depends on the configuration) threshold for 
+assigned period. The idea is that, by forcing a station to reconnect, the 
+station often goes to an AP with better signals to its eyes, therefore gets 
+better performances.
 
-This feature can also be used as blocking those stations below certain RSSI if the duration threshold is set to 1 second. This won't completely shut off a station since the station still can connect for 1 second before gets kick, but it surely will be very annoying and close to unusable wireless. We cannot simply block a station every time it falls below a threshold. If we do that, we then have no idea when the station is back into the range. At this moment, only a connected station can be told RSSI on controller, it is a chicken and egg problem.
+This feature can also be used as blocking those stations below certain RSSI if 
+the duration threshold is set to 1 second. This won't completely shut off a 
+station since the station still can connect for 1 second before gets kick, but 
+it surely will be very annoying and close to unusable wireless. We cannot simply
+block a station every time it falls below a threshold. If we do that, we then 
+have no idea when the station is back into the range. At this moment, only a 
+connected station can be told RSSI on controller, it is a chicken and egg problem.
 
 ## WLAN On/Off Schedule
-The UniFi controller will turn on/off selected WLANs on selected APs based on the specified daily schedules.
+The UniFi controller will turn on/off selected WLANs on selected APs based on 
+the specified daily schedules.
 
 ## AP Periodic Reboot
 The controller will reboot selected APs on the specified days and time.
 
 # Prerequisites
-The UniFi-Lab utility needs to interact with the UniFi controller, therefore '''UniFi controller must be up and running'''. It also needs these two software installed
+The UniFi-Lab utility needs to interact with the UniFi controller, therefore 
+'''UniFi controller must be up and running'''. It also needs these two software installed
 * Python 2.x
 * Curl
 Below we demonstrate installation steps in different operating systems.
 
 ## Debian 6.0
-* This is a fresh Debian installed on a VMware, the Debian image can be downloaded at http://www.trendsigma.net/vmware/debian6t.html
+* This is a fresh Debian installed on a VMware, the Debian image can be 
+downloaded at http://www.trendsigma.net/vmware/debian6t.html
 * open a terminal and type 'python -V' to check if it is installed and which version it is
 * the Python version I got is 2.6.6
 * We also need curl. Since it is not in the system, we need to install it:
 ** In Debian GNOME desktop, "System" > "Administration" > "Synaptic Package Manager"
 ** Search for "curl"
-** Mark the "Install" of curl and click "Apply" to install curl and dependent packages
+** Mark the "Install" of curl and click "Apply" to install curl and dependent 
+   packages
 * bring up a new terminal and see if 'curl www.google.com' returns the text version of google page
 
 ## Windows
-* Python can be downloaded from http://www.python.org/download. The version I installed is Python 2.7.3 which is the current production code. I don't think there is a version dependency for UniFiLab, so other nearby versions should work also.
+* Python can be downloaded from http://www.python.org/download. The version I 
+installed is Python 2.7.3 which is the current production code. I don't think 
+there is a version dependency for UniFiLab, so other nearby versions should work 
+also.
 * I am using "Windows X86-64 MSI Installer" of Python since I am using a Win7 Pro 64-bit laptop.
 * After installation, Python is not in the 'Path' variable so we need to add that.
-** Right click "Computer" > "Properties" > "Advanced system settings" > "Advanced" tab > "Environmental Variables", append ";C:\Python27\" to the end of 'Path' System variables.
+** Right click "Computer" > "Properties" > "Advanced system settings" > "Advanced" tab > "Environmental Variables", append "\;C:\\Python27\\" to the end of 'Path' System variables.
 * cURL can be downloaded from http://www.paehl.com/open_source/?CURL_7.27.0, this is 32-bit
 * The one I installed is "Download WITH SUPPORT SSL"
 * Extract the zip file and there is a curl executable. Put it under UniFiLab scripts folder.
@@ -60,7 +81,10 @@ Create a directory and put above files under it.
 For Windows, make sure that curl.exe is also under the same folder.
 
 # Execution
-Modify the config file first according to your needs and environment. Then, in CLI, go to the directory, run "'''python unifi_lab.py'''" to start. To stop, press "Ctlr-C".  If you change the config file while running, you also need to  restart the UniFi-Lab to reflect these changes.
+Modify the config file first according to your needs and environment. Then, in 
+CLI, go to the directory, run "'''python unifi_lab.py'''" to start. To stop, 
+press "Ctlr-C".  If you change the config file while running, you also need to
+restart the UniFi-Lab to reflect these changes.
 
 # Configuration
 ## Overall
