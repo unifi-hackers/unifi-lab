@@ -236,7 +236,7 @@ def ssidOnOffSchedule(ctlr):
 
 def periodicReboot(ctlr):
     """
-        this function is resonsible for rebooting the UAPs at the specified time
+        this function is responsible for rebooting the UAPs at the specified time
     """
     global have_rebooted
     today_is = time.strftime("%a", time.localtime())
@@ -271,13 +271,11 @@ def continuesLoop():
 
 
     # read from config file to initialize
-    config_file = open(configFile,'r')
-    for line in config_file:
-        if line[0] == '#':
-            pass
-        else:
+    for rawLine in open(configFile,'r'):
+        line = rawLine.rstip("\n").strip()
+        if line and line[0] != '#':
             try:
-                [var,val] = line.strip().split('=')
+                [var,val] = line.split('=', 1)
                 log.info("> %s %s" % (var, val))
                 if var == "CTLR_ADDR":  ctlr_ip = val
                 elif var == "CTLR_USERNAME":                        ctlr_username = val
@@ -308,9 +306,9 @@ def continuesLoop():
                 elif var == "REBOOT_AP_NAME_PREFIX":                reboot_ap_name_prefix = val
                 elif var == "REBOOT_DAYS":                          reboot_days = val.split(',')
                 elif var == "REBOOT_TIME":                          reboot_time = val
-            except ValueError:
-                pass
-    config_file.close()
+            except Exception, e:
+                logError(e)
+                sys.exit(1)
 
 
     ctlr = unifi_lab_ctlrobj.MyCtlr(ctlr_ip,ctlr_username,ctlr_password)
