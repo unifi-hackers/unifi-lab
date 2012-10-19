@@ -64,6 +64,7 @@ import time
 import logging.handlers
 import unifi_lab_ctlrobj
 import daemon
+import traceback
 
 
 ctlr_addr = ""
@@ -106,7 +107,8 @@ sig_reconn_threshold_seconds = None
 
 
 # logging is global, as we need it aways
-log = logging.getLogger('Mylog')log.setLevel(logLevel)
+log = logging.getLogger('Mylog')
+log.setLevel(logLevel)
 _handler = logging.handlers.RotatingFileHandler(logFile, maxBytes=10*1024**2, backupCount=5)
 _handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log.addHandler(_handler)
