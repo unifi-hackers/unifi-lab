@@ -113,7 +113,7 @@ log.addHandler(_handler)
 
 
 def logError(e):
-    """ centralised logging """
+    """ centralised logging method """
     msg = "=========\n"
     # args can be empty
     if e.args:
@@ -131,10 +131,11 @@ def logError(e):
     return msg
 
 
-# if a station was already blocked in controller,
-# current implementation does NOT unblock it even
-# if it is in the mac auth list
 def MACAuth(ctlr, sta_list):
+    """
+        if a station was already blocked in controller, current implementation does NOT unblock it even
+        if it is in the mac auth list
+    """
     cur_asso_list = ctlr.ctlr_get_all_sta_mac(sta_list)
     mac_auth_list = [line.strip() for line in open('unifi_lab_mac_auth.list','r')]
     for mac in cur_asso_list:
@@ -147,13 +148,17 @@ def MACAuth(ctlr, sta_list):
             ctlr.ctlr_mac_cmd(mac,"block")
     return
 
-# if a station falls between rssi threshold_low and threshold_high for X seconds, then reconnect the station
-# the idea is that, the de-auth normally triggers the station to search for another AP with better signals
-# and then roams to that ap.
-# NOTE UniFi controller GUI does not display RSSI value directly; it only shows Signal strength
-# NOTE RSSI = Signal value - Noise Value (depends on the environment, usually -90 dBm)
-# By setting in the unifi_lab.init.config file, you can choose either do it based on Signal Strength or RSSI
+
 def PoorSignalReconn(ctlr, sta_list):
+    """
+        if a station falls between rssi threshold_low and threshold_high for X seconds, then reconnect the station
+        the idea is that, the de-auth normally triggers the station to search for another AP with better signals
+        and then roams to that ap.
+        NOTE UniFi controller GUI does not display RSSI value directly; it only shows Signal strength
+        NOTE RSSI = Signal value - Noise Value (depends on the environment, usually -90 dBm)
+        By setting in the unifi_lab.init.config file, you can choose either do it based on Signal Strength or RSSI    
+    """
+    
     cur_asso_list = ctlr.ctlr_get_all_sta_mac(sta_list)
     for mac in cur_asso_list:
         if station_rssi.has_key(mac):       # initialization
@@ -180,6 +185,9 @@ def PoorSignalReconn(ctlr, sta_list):
     return
 
 def OpenHour(on, off):
+    """
+        this function decides if the Wifi is on or off
+    """
     # on/off time in 24-Hour format. For example, 08:15 and 19:30
     now = time.strftime("%H:%M", time.localtime())
     [on_hour,on_min] = on.split(':')
@@ -197,6 +205,10 @@ def OpenHour(on, off):
 
 # Monday_ON and Monday_OFF time, all the way to Sunday
 def SSIDSch(ctlr):
+    """
+        this checks the day of the week and calls than OpenHour to check if need need to be
+        on or off
+    """
     today_is = time.strftime("%a", time.localtime())
     if today_is == "Mon":
         power_on_time = Monday_on;  power_off_time = Monday_off
@@ -221,6 +233,9 @@ def SSIDSch(ctlr):
     return
 
 def PeriodicReboot(ctlr):
+    """
+        this function is resonsible for rebooting the UAPs at the specified time
+    """
     global have_rebooted
     today_is = time.strftime("%a", time.localtime())
     if today_is in reboot_days:
@@ -240,6 +255,10 @@ def PeriodicReboot(ctlr):
 
 
 def continuesLoop():
+    """
+        central function which never terminates (until the process is killed. It runs every x second through the
+        checks
+    """
     # its a hack ... but I'll try to make it work in a Linux way before I clean it up
     global ctlr_password, ctlr_username, feature_mac_athentication, feature_rssi_reconnection, feature_ssid_schedule, feature_periodic_reboot
     global Saturday_on, Saturday_off, Sunday_on, Sunday_off, reboot_ap_name_prefix, reboot_days, reboot_time
@@ -318,6 +337,11 @@ def continuesLoop():
         time.sleep(5)
 
 def main():
+    """
+        mail function which handles the stuff we only need if we're called directly but not 
+        if we're used as module by an other module.
+    """
+    
     daemon.startstop(errorLogFile, pidfile=pidfile)
     log.info('Started')
     continuesLoop()
