@@ -131,7 +131,7 @@ def logError(e):
     return msg
 
 
-def MACAuth(ctlr, sta_list):
+def macAuth(ctlr, sta_list):
     """
         if a station was already blocked in controller, current implementation does NOT unblock it even
         if it is in the mac auth list
@@ -149,7 +149,7 @@ def MACAuth(ctlr, sta_list):
     return
 
 
-def PoorSignalReconn(ctlr, sta_list):
+def poorSignalReconn(ctlr, sta_list):
     """
         if a station falls between rssi threshold_low and threshold_high for X seconds, then reconnect the station
         the idea is that, the de-auth normally triggers the station to search for another AP with better signals
@@ -184,7 +184,7 @@ def PoorSignalReconn(ctlr, sta_list):
             station_rssi[mac] = time.time()
     return
 
-def OpenHour(on, off):
+def openHour(on, off):
     """
         this function decides if the Wifi is on or off
     """
@@ -204,9 +204,9 @@ def OpenHour(on, off):
     return True
 
 # Monday_ON and Monday_OFF time, all the way to Sunday
-def SSIDSch(ctlr):
+def ssidOnOffSchedule(ctlr):
     """
-        this checks the day of the week and calls than OpenHour to check if need need to be
+        this checks the day of the week and calls than openHour to check if need need to be
         on or off
     """
     today_is = time.strftime("%a", time.localtime())
@@ -224,7 +224,7 @@ def SSIDSch(ctlr):
         power_on_time = Saturday_on;  power_off_time = Saturday_off
     if today_is == "Sun":
         power_on_time = Sunday_on;  power_off_time = Sunday_off
-    if OpenHour(power_on_time, power_off_time):
+    if openHour(power_on_time, power_off_time):
         print "[SSID Sche] TODAY is ", today_is, "NOW is OPEN"
         ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,True)
     else:
@@ -232,7 +232,7 @@ def SSIDSch(ctlr):
         ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,False)
     return
 
-def PeriodicReboot(ctlr):
+def periodicReboot(ctlr):
     """
         this function is resonsible for rebooting the UAPs at the specified time
     """
@@ -256,7 +256,7 @@ def PeriodicReboot(ctlr):
 
 def continuesLoop():
     """
-        central function which never terminates (until the process is killed. It runs every x second through the
+        central function which never terminates (until the process is killed). It runs every x second through the
         checks
     """
     # its a hack ... but I'll try to make it work in a Linux way before I clean it up
@@ -319,18 +319,18 @@ def continuesLoop():
         stations_list = ctlr.ctlr_stat_sta()
         
         if feature_mac_athentication:
-            MACAuth(ctlr,stations_list)
+            macAuth(ctlr,stations_list)
             
         if feature_rssi_reconnection:
-            PoorSignalReconn(ctlr,stations_list)
+            poorSignalReconn(ctlr,stations_list)
 
         if feature_ssid_schedule and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
-            SSIDSch(ctlr)
+            ssidOnOffSchedule(ctlr)
             i3 = 0
         i3 = i3 + 1
 
         if feature_periodic_reboot and i4 > 11:
-            PeriodicReboot(ctlr)
+            periodicReboot(ctlr)
             i4 = 0
         i4 = i4 + 1
         
