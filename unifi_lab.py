@@ -140,10 +140,10 @@ def macAuth(ctlr, sta_list):
     mac_auth_list = [line.strip() for line in open('unifi_lab_mac_auth.list','r')]
     for mac in cur_asso_list:
         if mac in mac_auth_list:
-            print "[MAC Auth] This MAC is okay: ", mac
+            log.info("[MAC Auth] This MAC is okay: %s " % mac)
             pass
         else:
-            print "[MAC Auth] This MAC needs to be blocked: ", mac
+            log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
             # block this station
             ctlr.ctlr_mac_cmd(mac,"block")
     return
@@ -173,14 +173,14 @@ def poorSignalReconn(ctlr, sta_list):
         if station_rssi[mac] == 0:              # the station just reconnected back
             station_rssi[mac] = time.time()
         if ss <= sig_reconn_threshold:
-            print "[Poor Sig] Station", mac, poor_signal_base, ss, "is less than threshold, current time", time.time(), ", first occurred at", station_rssi[mac]
+            log.info("[Poor Sig] Station %s %s %s is less than threshold, first occurred at %s" % (mac, poor_signal_base, ss, station_rssi[mac]))
             if time.time() - station_rssi[mac] > sig_reconn_threshold_seconds:
-                print "[Poor Sig] Reconnect the station", mac
+                log.info("[Poor Sig] Reconnect the station %s" % mac)
                 # reconnect the client
                 ctlr.ctlr_mac_cmd(mac,"reconnect")
                 station_rssi[mac] = 0
         else:
-            print "[Poor Sig] Station", mac, poor_signal_base, ss, "is okay"
+            log.info("[Poor Sig] Station %s %s %s is okay"  % (mac, poor_signal_base, ss))
             station_rssi[mac] = time.time()
     return
 
@@ -225,10 +225,10 @@ def ssidOnOffSchedule(ctlr):
     if today_is == "Sun":
         power_on_time = Sunday_on;  power_off_time = Sunday_off
     if openHour(power_on_time, power_off_time):
-        print "[SSID Sche] TODAY is ", today_is, "NOW is OPEN"
+        log.info("[SSID Sche] TODAY is %s NOW is OPEN" % today_is)
         ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,True)
     else:
-        print "[SSID Sche] TODAY is ", today_is, "NOW is CLOSE"
+        log.info("[SSID Sche] TODAY is %s NOW is CLOSE" % today_is)
         ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,False)
     return
 
@@ -245,9 +245,9 @@ def periodicReboot(ctlr):
             [reboot_hour,reboot_min] = reboot_time.split(':')
             [cur_hour,cur_min] = now.split(':')
             if (cur_hour == reboot_hour and cur_min >= reboot_min) or (cur_hour > reboot_hour):
-                print "[REBOOT] Today is:", today_is, "\tSelected day(s) for reboot:", reboot_days
-                print "[REBOOT] Now is:", now, "\tSelected time to reboot:", reboot_time
-                print "[REBOOT] Rebooting all APs with name prefix (and those without name):", reboot_ap_name_prefix
+                log.info("[REBOOT] Today is: %s \tSelected day(s) for reboot: %s" % (today_is, reboot_days))
+                log.info("[REBOOT] Selected time to reboot: %s" %reboot_time)
+                log.info("[REBOOT] Rebooting all APs with name prefix (and those without name): %s" % reboot_ap_name_prefix)
                 ctlr.ctlr_reboot_ap(reboot_ap_name_prefix)
                 have_rebooted = True
     else:
@@ -276,7 +276,7 @@ def continuesLoop():
         else:
             try:
                 [var,val] = line.strip().split('=')
-                print "> ", var, val
+                log.info("> %s %s" % (var, val))
                 if var == "CTLR_ADDR":  ctlr_ip = val
                 elif var == "CTLR_USERNAME":                        ctlr_username = val
                 elif var == "CTLR_PASSWORD":                        ctlr_password = val
