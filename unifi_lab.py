@@ -43,7 +43,7 @@
 """
 
 # config file
-configFile = '/etc/unifi_lab.config'
+configFile = "/etc/unifi_lab.config"
 
 # log file for unhandled internal errors
 errorLogFile = "/var/log/unifi_lab.internalerrors"
@@ -56,6 +56,8 @@ logLevel = logging.INFO
 # we can only run one instance
 pidfile = "/var/run/unifi_lab.pid"
 
+
+###################### no changes beyond that line needed ####################
 
 import time
 import logging.handlers
@@ -108,6 +110,26 @@ log.setLevel(logLevel)
 _handler = logging.handlers.RotatingFileHandler(logFile, maxBytes=10*1024**2, backupCount=5)
 _handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log.addHandler(_handler)
+
+
+def logError(e):
+    """ centralised logging """
+    msg = "=========\n"
+    # args can be empty
+    if e.args:
+        if len(e.args) > 1:
+            msg += str(e.args) + "\n"
+        else:
+            msg += e.args[0] + "\n"
+    else:
+        # print exception class name
+        msg += str(e.__class__) + "\n"
+    msg += "---------" + "\n"
+    msg += traceback.format_exc() + "\n"
+    msg += "=========" + "\n"
+    log.error(msg)
+    return msg
+
 
 # if a station was already blocked in controller,
 # current implementation does NOT unblock it even
