@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 #############################################################################
 ## UniFi-Lab v0.0.2                                                        ##
 #############################################################################
@@ -27,15 +30,37 @@
 ##SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #############################################################################
 ##
-## Refer to http://wiki.ubnt.com/UniFi_Lab
-## Ubiquiti Networks UniFi-Lab consists of following tools:
-##    1. MAC list authentication
-##    2. Poor Signal Quality reconnection (based on Signal Strength or RSSI value)
-##    3. SSID schedule on/off
-##    4. Periodic reboot APs (introduced in v0.0.2)
+
+"""
+    Refer to http://wiki.ubnt.com/UniFi_Lab
+    Ubiquiti Networks UniFi-Lab consists of following tools:
+        1. MAC list authentication
+        2. Poor Signal Quality reconnection (based on Signal Strength or RSSI value)
+        3. SSID schedule on/off
+        4. Periodic reboot APs (introduced in v0.0.2)
+        
+    usage: unifi_lab [start|stop|restart]
+"""
+
+# config file
+configFile = '/etc/unifi_lab.config'
+
+# log file for unhandled internal errors
+errorLogFile = "/var/log/unifi_lab.internalerrors"
+# normal log file
+logFile = "/var/log/unifi_lab.log"
+# we're loging minimal
+import logging
+logLevel = logging.INFO
+
+# we can only run one instance
+pidfile = "/var/run/unifi_lab.pid"
 
 import time
+import logging.handlers
 import unifi_lab_ctlrobj
+import daemon
+
 
 ctlr_addr = ""
 ctlr_username = ""
@@ -69,6 +94,19 @@ reboot_ap_name_prefix = ""
 reboot_days = ""
 reboot_time = ""
 have_rebooted = False
+
+poor_signal_base = None
+sig_reconn_threshold = None
+sig_reconn_threshold_seconds = None
+
+
+
+# logging is global, as we need it aways
+log = logging.getLogger('Mylog')
+log.setLevel(logLevel)
+_handler = logging.handlers.RotatingFileHandler(logFile, maxBytes=10*1024**2, backupCount=5)
+_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+log.addHandler(_handler)
 
 # if a station was already blocked in controller,
 # current implementation does NOT unblock it even
@@ -163,7 +201,7 @@ def PeriodicReboot(ctlr):
     global have_rebooted
     today_is = time.strftime("%a", time.localtime())
     if today_is in reboot_days:
-        if have_rebooted == False:
+        if not have_rebooted:
             #use have_rebooted to ensure that rebooting happens only once a day
             now = time.strftime("%H:%M", time.localtime())
             [reboot_hour,reboot_min] = reboot_time.split(':')
@@ -177,71 +215,90 @@ def PeriodicReboot(ctlr):
     else:
         have_rebooted = False
 
-# read from config file to initialize
-config_file = open('unifi_lab.init.config','r')
-for line in config_file:
-    if line[0] == '#':
-        pass
-    else:
-        try:
-            [var,val] = line.strip().split('=')
-            print "> ", var, val
-            if var == "CTLR_ADDR":  ctlr_ip = val
-            elif var == "CTLR_USERNAME":                        ctlr_username = val
-            elif var == "CTLR_PASSWORD":                        ctlr_password = val
-            elif var == "FEATURE_MAC_AUTH" and val == "True":    feature_mac_athentication = True
-            elif var == "FEATURE_POOR_SIGNAL_RECONN" and val == "True": feature_rssi_reconnection = True
-            elif var == "POOR_SIGNAL_BASE":                     poor_signal_base = val
-            elif var == "SIGNAL_THRESHOLD":                     sig_reconn_threshold = int(val)
-            elif var == "SIGNAL_THRESHOLD_SECONDS":             sig_reconn_threshold_seconds = int(val)
-            elif var == "FEATURE_SSID_SCH" and val == "True":   feature_ssid_schedule = True
-            elif var == "WLAN_LIST":                            wlan_list = val.split(',')
-            elif var == "AP_NAME_PREFIX" and val is not None:   ap_name_prefix = val
-            elif var == "MONDAY_ON":                            Monday_on = val
-            elif var == "MONDAY_OFF":                           Monday_off = val
-            elif var == "TUESDAY_ON":                           Tuesday_on = val
-            elif var == "TUESDAY_OFF":                          Tuesday_off = val
-            elif var == "WEDNESDAY_ON":                         Wednesday_on = val
-            elif var == "WEDNESDAY_OFF":                        Wednesday_off = val
-            elif var == "THURSDAY_ON":                          Thursday_on = val
-            elif var == "THURSDAY_OFF":                         Thursday_off = val
-            elif var == "FRIDAY_ON":                            Friday_on = val
-            elif var == "FRIDAY_OFF":                           Friday_off = val
-            elif var == "SATURDAY_ON":                          Saturday_on = val
-            elif var == "SATURDAY_OFF":                         Saturday_off = val
-            elif var == "SUNDAY_ON":                            Sunday_on = val
-            elif var == "SUNDAY_OFF":                           Sunday_off = val
-            elif var == "FEATURE_PERIODIC_REBOOT" and val == "True":   feature_periodic_reboot = True
-            elif var == "REBOOT_AP_NAME_PREFIX":                reboot_ap_name_prefix = val
-            elif var == "REBOOT_DAYS":                          reboot_days = val.split(',')
-            elif var == "REBOOT_TIME":                          reboot_time = val
-        except ValueError:
+
+def continuesLoop():
+    # its a hack ... but I'll try to make it work in a Linux way before I clean it up
+    global ctlr_password, ctlr_username, feature_mac_athentication, feature_rssi_reconnection, feature_ssid_schedule, feature_periodic_reboot
+    global Saturday_on, Saturday_off, Sunday_on, Sunday_off, reboot_ap_name_prefix, reboot_days, reboot_time
+    global Tuesday_off, Wednesday_on, Wednesday_off, Thursday_on, Thursday_off, Friday_on, Friday_off
+    global wlan_list, ap_name_prefix, Monday_on, Monday_off, Tuesday_on 
+    global poor_signal_base, sig_reconn_threshold, sig_reconn_threshold_seconds
+
+
+
+    # read from config file to initialize
+    config_file = open(configFile,'r')
+    for line in config_file:
+        if line[0] == '#':
             pass
-config_file.close()
+        else:
+            try:
+                [var,val] = line.strip().split('=')
+                print "> ", var, val
+                if var == "CTLR_ADDR":  ctlr_ip = val
+                elif var == "CTLR_USERNAME":                        ctlr_username = val
+                elif var == "CTLR_PASSWORD":                        ctlr_password = val
+                elif var == "FEATURE_MAC_AUTH" and val == "True":    feature_mac_athentication = True
+                elif var == "FEATURE_POOR_SIGNAL_RECONN" and val == "True": feature_rssi_reconnection = True
+                elif var == "POOR_SIGNAL_BASE":                     poor_signal_base = val
+                elif var == "SIGNAL_THRESHOLD":                     sig_reconn_threshold = int(val)
+                elif var == "SIGNAL_THRESHOLD_SECONDS":             sig_reconn_threshold_seconds = int(val)
+                elif var == "FEATURE_SSID_SCH" and val == "True":   feature_ssid_schedule = True
+                elif var == "WLAN_LIST":                            wlan_list = val.split(',')
+                elif var == "AP_NAME_PREFIX" and val is not None:   ap_name_prefix = val
+                elif var == "MONDAY_ON":                            Monday_on = val
+                elif var == "MONDAY_OFF":                           Monday_off = val
+                elif var == "TUESDAY_ON":                           Tuesday_on = val
+                elif var == "TUESDAY_OFF":                          Tuesday_off = val
+                elif var == "WEDNESDAY_ON":                         Wednesday_on = val
+                elif var == "WEDNESDAY_OFF":                        Wednesday_off = val
+                elif var == "THURSDAY_ON":                          Thursday_on = val
+                elif var == "THURSDAY_OFF":                         Thursday_off = val
+                elif var == "FRIDAY_ON":                            Friday_on = val
+                elif var == "FRIDAY_OFF":                           Friday_off = val
+                elif var == "SATURDAY_ON":                          Saturday_on = val
+                elif var == "SATURDAY_OFF":                         Saturday_off = val
+                elif var == "SUNDAY_ON":                            Sunday_on = val
+                elif var == "SUNDAY_OFF":                           Sunday_off = val
+                elif var == "FEATURE_PERIODIC_REBOOT" and val == "True":   feature_periodic_reboot = True
+                elif var == "REBOOT_AP_NAME_PREFIX":                reboot_ap_name_prefix = val
+                elif var == "REBOOT_DAYS":                          reboot_days = val.split(',')
+                elif var == "REBOOT_TIME":                          reboot_time = val
+            except ValueError:
+                pass
+    config_file.close()
 
 
-ctlr = unifi_lab_ctlrobj.MyCtlr(ctlr_ip,ctlr_username,ctlr_password)
-i3 = 0
-i4 = 0
-while True:
-    ctlr.ctlr_login()
-    stations_list = ctlr.ctlr_stat_sta()
-    
-    if feature_mac_athentication:
-        MACAuth(ctlr,stations_list)
+    ctlr = unifi_lab_ctlrobj.MyCtlr(ctlr_ip,ctlr_username,ctlr_password)
+    i3 = 0
+    i4 = 0
+    while True:
+        ctlr.ctlr_login()
+        stations_list = ctlr.ctlr_stat_sta()
         
-    if feature_rssi_reconnection:
-        PoorSignalReconn(ctlr,stations_list)
+        if feature_mac_athentication:
+            MACAuth(ctlr,stations_list)
+            
+        if feature_rssi_reconnection:
+            PoorSignalReconn(ctlr,stations_list)
 
-    if feature_ssid_schedule and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
-        SSIDSch(ctlr)
-        i3 = 0
-    i3 = i3 + 1
+        if feature_ssid_schedule and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
+            SSIDSch(ctlr)
+            i3 = 0
+        i3 = i3 + 1
 
-    if feature_periodic_reboot and i4 > 11:
-        PeriodicReboot(ctlr)
-        i4 = 0
-    i4 = i4 + 1
+        if feature_periodic_reboot and i4 > 11:
+            PeriodicReboot(ctlr)
+            i4 = 0
+        i4 = i4 + 1
+        
+        time.sleep(5)
+
+def main():
+    daemon.startstop(errorLogFile, pidfile=pidfile)
+    log.info('Started')
+    continuesLoop()
+    log.info('Stopped')
     
-    time.sleep(5)
-
+if __name__ == '__main__':
+    main()
