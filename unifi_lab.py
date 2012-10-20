@@ -104,7 +104,7 @@ sig_reconn_threshold_seconds = None
 
 
 # logging is global, as we need it aways
-# we're loging minimal
+# we're logging minimal
 logLevel = logging.INFO
 log = logging.getLogger('Mylog')
 log.setLevel(logLevel)
@@ -370,7 +370,7 @@ def main():
 
     myConfigManager = config_manager.ConfigManager(configFile)
 
-    # on non Windows System we go into the background
+    # on non Windows Systems we go into the background
     if sys.platform in ("linux2", "darwin"):
         daemon.startstop(myConfigManager.getErrorLogFile(), pidfile=myConfigManager.getPidFile())
 
