@@ -39,33 +39,30 @@
         3. SSID schedule on/off
         4. Periodic reboot APs (introduced in v0.0.2)
         
-    usage: unifi_lab [start|stop|restart]
+    usage: unifi_lab [start|stop|restart] <options>
+
+    -c  use other config file than /etc/unifi_lab/unifi_lab.ini
+    -h  this help
+    
+    the start|stop|restart paramter is not available on Windows .. so don't use it there
+    
 """
-
-# config file
-configFile = "/etc/unifi_lab.config"
-
-# log file for unhandled internal errors
-errorLogFile = "/var/log/unifi_lab.internalerrors"
-# normal log file
-logFile = "/var/log/unifi_lab.log"
-# we're loging minimal
-import logging
-logLevel = logging.INFO
-
-# we can only run one instance
-pidfile = "/var/run/unifi_lab.pid"
 
 
 ###################### no changes beyond that line needed ####################
 
+# shipped with python
 import sys
 import time
+import logging
 import logging.handlers
-import unifi_lab_ctlrobj
-import daemon
 import traceback
+import getopt
 
+# shipped with unifi_lab
+import config_manager
+import daemon
+import unifi_lab_ctlrobj
 
 ctlr_addr = ""
 ctlr_username = ""
@@ -107,11 +104,10 @@ sig_reconn_threshold_seconds = None
 
 
 # logging is global, as we need it aways
+# we're loging minimal
+logLevel = logging.INFO
 log = logging.getLogger('Mylog')
 log.setLevel(logLevel)
-_handler = logging.handlers.RotatingFileHandler(logFile, maxBytes=10*1024**2, backupCount=5)
-_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-log.addHandler(_handler)
 
 
 def logError(e):
@@ -271,7 +267,8 @@ def continuesLoop():
 
 
     # read from config file to initialize
-    for rawLine in open(configFile,'r'):
+    # FIXME: need to replace the whole config file
+    for rawLine in open("/etc/unifi_lab.config",'r'):
         line = rawLine.rstip("\n").strip()
         if line and line[0] != '#':
             try:
@@ -336,15 +333,52 @@ def continuesLoop():
         
         time.sleep(5)
 
+# Print usage message and exit
+def usage(*args):
+    sys.stdout = sys.stderr
+    print __doc__
+    print 50*"-"
+    for msg in args: print msg
+    sys.exit(2)
+
+
 def main():
     """
         mail function which handles the stuff we only need if we're called directly but not 
         if we're used as module by an other module.
     """
-    
-    # we fork only into background on linux
-    if sys.platform.startswith("linux"):
-        daemon.startstop(errorLogFile, pidfile=pidfile)
+
+    # on Windows we don't have start|stop|restart
+    if sys.platform in ("linux2", "darwin"):
+        parsingStartingPoint = 2
+    else:
+        parsingStartingPoint = 1
+        
+    # options can be empty
+    try:
+        opts, args = getopt.getopt(sys.argv[parsingStartingPoint:], 'c:h')
+    except getopt.error, msg:
+        usage(msg)
+            
+    configFile = None
+    for o, a in opts:
+        if o == '-h':
+            print __doc__
+            sys.exit()
+        if o == '-c':
+            configFile = a
+
+    myConfigManager = config_manager.ConfigManager(configFile)
+
+    # on non Windows System we go into the background
+    if sys.platform in ("linux2", "darwin"):
+        daemon.startstop(myConfigManager.getErrorLogFile(), pidfile=myConfigManager.getPidFile())
+
+    # configure the logging
+    _handler = logging.handlers.RotatingFileHandler(myConfigManager.getLogFile(), maxBytes=10*1024**2, backupCount=5)
+    _handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    log.addHandler(_handler)
+
     
     log.info('Started')
     continuesLoop()
