@@ -42,11 +42,17 @@
     usage: unifi_lab [start|stop|restart] <options>
 
     -c  use other config file than /etc/unifi_lab/unifi_lab.ini
+    -f  do not fork into background ... only good for debugging
     -h  this help
     
     the start|stop|restart paramter is not available on Windows .. so don't use it there
     
 """
+
+# Global FIXMES ....
+# FIXME: code does not check if curl is installed, should be done
+
+
 
 # FIXME: move that to the config file or extra file
 errorMessageText = """Subject: UniFi Labs Error
@@ -149,6 +155,7 @@ class UniFiLab:
                                               configManager.getControllerPassword())
         
         # do a first login to make sure we can conect to the controller, before going to the background
+        # FIXME: does not raise a exception if login does not work
         self._ctlr.ctlr_login()
         self._stationList = self._ctlr.ctlr_stat_sta()
 
@@ -344,29 +351,40 @@ def main():
     # on Windows we don't have start|stop|restart
     if sys.platform in ("linux2", "darwin"):
         parsingStartingPoint = 2
+        if len(sys.argv) < 2:
+            usage("Error: No paramter does not work on Unix-like systems.")
+        # a small hack ... sorry
+        if sys.argv[1] == "-h":
+            print __doc__
+            sys.exit()
+        if not sys.argv[1] in ("start", "stop", "restart"):
+            usage("Error: start|stop|restart is a minimum on Unix-like systems.")
     else:
         parsingStartingPoint = 1
         
     # options can be empty
     try:
-        opts, args = getopt.getopt(sys.argv[parsingStartingPoint:], 'c:h')
+        opts, args = getopt.getopt(sys.argv[parsingStartingPoint:], 'c:hf')
     except getopt.error, msg:
         usage(msg)
             
     configFile = None
+    doNotFork = False
     for o, a in opts:
         if o == '-h':
             print __doc__
             sys.exit()
         if o == '-c':
             configFile = a
+        if o == '-f':
+            doNotFork = True
 
     myConfigManager = config_manager.ConfigManager(configFile)
     # we instance it here so its before we go into the background
     myUniFiLab = UniFiLab(myConfigManager)
     
     # on non Windows Systems we go into the background
-    if sys.platform in ("linux2", "darwin"):
+    if not doNotFork and sys.platform in ("linux2", "darwin"):
         daemon.startstop(myConfigManager.getErrorLogFile(), pidfile=myConfigManager.getPidFile())
 
     # configure the logging
