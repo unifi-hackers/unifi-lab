@@ -34,7 +34,7 @@ class ConfigManager:
         if not os.path.isfile(configFile):
             sys.stdout = sys.stderr
             print "Error: Cannot find config file %r" % configFile
-            sys.exit(2)#                elif var == "FEATURE_PERIODIC_REBOOT" and val == "True":   feature_periodic_reboot = True
+            sys.exit(2)
 
  
         self._config = SafeConfigParser()
