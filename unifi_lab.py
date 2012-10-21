@@ -48,6 +48,23 @@
     
 """
 
+# FIXME: move that to the config file or extra file
+errorMessageText = """Subject: UniFi Labs Error
+
+Hi!
+
+Following error occurred
+
+%(error)s
+
+Yours,
+UniFi Labs
+"""
+
+# FIXME: move that to the config file
+# how often should the code run in seconds 
+interval = 5
+
 
 ###################### no changes beyond that line needed ####################
 
@@ -58,6 +75,9 @@ import logging
 import logging.handlers
 import traceback
 import getopt
+import smtplib
+from email.MIMEText import MIMEText
+
 
 # shipped with unifi_lab
 import config_manager
@@ -89,6 +109,28 @@ def logError(e):
     msg += "=========" + "\n"
     log.error(msg)
     return msg
+
+def sendMail(text, config):
+    """ mails a mail with the specified text """
+    # build mail                                                                                                                                                                                                                
+    contentLines = text.splitlines()
+    # Create a text/plain message                                                                                                                                                                                               
+    msg = MIMEText('\n'.join(contentLines[2:]), _charset = "utf-8")
+    msg['Subject'] = contentLines[0][len("Subject: "):]
+    msg['From'] = config.getFromAddress()
+    msg['To'] = ",".join(config.getToAddresses())
+    msg['Date'] = time.strftime('%a, %d %b %Y %H:%M:%S +0000', time.gmtime())
+
+    # Send the message via our own SMTP server, but don't include the                                                                                                                                                           
+    # envelope header.
+    try:
+        s = smtplib.SMTP()
+        s.connect(config.getSmtpServer())
+        s.sendmail(config.getFromAddress(), config.getToAddresses() , msg.as_string())
+        s.close()
+    except:
+        print "Critical: Unable to send mail!"
+
 
 ############### main class ######################
 
@@ -235,31 +277,54 @@ class UniFiLab:
             method which never terminates (until the process is killed). It runs every x second through the
             checks
         """
-        # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
-        i3 = 0
-        i4 = 0
+        
         while True:
-            self._ctlr.ctlr_login()
-            # update station list
-            self.updateStationList()
             
-            if self._config.getEnableMacAuth():
-                self.doMacAuth()
+            # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
+            i3 = 0
+            i4 = 0
+            
+            startTime = time.time()
+            # it is important that we keep running even if an error occurred, lets make sure
+            try:
+                self._ctlr.ctlr_login()
+                # update station list
+                self.updateStationList()
                 
-            if self._config.getEnablePoorSignalReconnect():
-                self.doPoorSignalReconnect()
+                if self._config.getEnableMacAuth():
+                    self.doMacAuth()
+                    
+                if self._config.getEnablePoorSignalReconnect():
+                    self.doPoorSignalReconnect()
 
-            if self._config.getEnableSsidOnOffSchedule() and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
-                self.doSsidOnOffSchedule()
-                i3 = 0
-            i3 = i3 + 1
+                if self._config.getEnableSsidOnOffSchedule() and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
+                    self.doSsidOnOffSchedule()
+                    i3 = 0
+                i3 = i3 + 1
 
-            if self._config.getEnablePeriodicReboot() and i4 > 11:
-                self.doPeriodicReboot()
-                i4 = 0
-            i4 = i4 + 1
-            
-            time.sleep(5)
+                if self._config.getEnablePeriodicReboot() and i4 > 11:
+                    self.doPeriodicReboot()
+                    i4 = 0
+                i4 = i4 + 1
+                
+                
+                # make sure that we runn every x seconds (including the time it took to work
+                sleepTime = interval + 1 - (time.time() - startTime)
+
+                if sleepTime < 0:
+                    log.error("System is too slow for %d sec interval by %d seconds" % (interval, abs(int(sleepTime))))
+                else:
+                    time.sleep(sleepTime)
+                    
+            except Exception, e:
+                # log error, and mail it ... and lets wait 10 times as long .... 
+                sendMail(errorMessageText % {"error": logError(e)}, self._config)
+                sleepTime = interval * 10 + 1 - (time.time() - startTime)
+                if sleepTime < 0:
+                    log.error("System is too slow for %d sec interval by %d seconds" % (10*interval, abs(int(sleepTime))))
+                else:
+                    time.sleep(sleepTime)
+
 
 # Print usage message and exit
 def usage(*args):
