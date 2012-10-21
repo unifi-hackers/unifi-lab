@@ -6,8 +6,22 @@
 from ConfigParser import *
 import os
 import sys
+import time
 
 defaultConfigFile = "/etc/unifi_lab/unifi_lab.ini"
+
+# Weekday as a decimal number [0(Sunday),6].
+# we map it by hand as %A depends on the local language --> we use %w
+mapSchedule = { 0: "onOffScheduleSunday", 
+                1: "onOffScheduleMonday", 
+                2: "onOffScheduleTuesday", 
+                3: "onOffScheduleWednesday", 
+                4: "onOffScheduleTursday", 
+                5: "onOffScheduleFriday", 
+                6: "onOffScheduleSaturday"
+               }
+# we map it by hand as otherwise the local language will make problemes
+mapDayOfTheWeek = {"sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6}
 
 class ConfigManager:
     _config = None
@@ -20,7 +34,8 @@ class ConfigManager:
         if not os.path.isfile(configFile):
             sys.stdout = sys.stderr
             print "Error: Cannot find config file %r" % configFile
-            sys.exit(2)
+            sys.exit(2)#                elif var == "FEATURE_PERIODIC_REBOOT" and val == "True":   feature_periodic_reboot = True
+
  
         self._config = SafeConfigParser()
         self._config.read(configFile)
@@ -28,6 +43,7 @@ class ConfigManager:
 
     def getConfigFile(self):
         return self._configFile
+        
         
     # General
     def getPidFile(self):
@@ -38,6 +54,18 @@ class ConfigManager:
 
     def getErrorLogFile(self):
         return self._config.get("General", "errorLogFile")
+    
+    
+    # Controller
+    def getControllerHost(self):
+        return self._config.get("Controller", "controllerHost")
+        
+    def getControllerUsername(self):
+        return self._config.get("Controller", "controllerUsername")
+        
+    def getControllerPassword(self):
+        return self._config.get("Controller", "controllerPassword")      
+        
         
     # Mail    
     def getFromAddress(self):
@@ -52,6 +80,63 @@ class ConfigManager:
     def getSmtpServer(self):
         return self._config.get("Mail", "smtpServer")
           
+          
+    # Feature
+    def getEnableMacAuth(self):
+        return self._config.getboolean("Feature", "enableMacAuth")
+        
+    def getEnablePoorSignalReconnect(self):
+        return self._config.getboolean("Feature", "enablePoorSignalReconnect")
+        
+    def getEnableSsidOnOffSchedule(self):
+        return self._config.getboolean("Feature", "enableSsidOnOffSchedule")
+        
+    def getEnablePeriodicReboot(self):
+        return self._config.getboolean("Feature", "enablePeriodicReboot")
+   
+   
+    # MacAuth
+    def getMacAuthListFile(self):
+        return self._config.get("MacAuth", "macAuthListFile")    
+
+
+    # PoorSignalReconnect
+    def getPoorSignalBase(self):
+        return self._config.get("PoorSignalReconnect", "poorSignalBase")
+    
+    def getPoorSignalThreshold(self):
+        return self._config.getint("PoorSignalReconnect", "poorSignalThreshold")
+        
+    def getPoorSignalThresholdSeconds(self):
+        return self._config.getint("PoorSignalReconnect", "poorSignalThresholdSeconds")
+    
+          
+    # SsidOnOffSchedule
+    def getOnOffScheduleApNamePrefix(self):
+        return self._config.get("SsidOnOffSchedule", "onOffScheduleApNamePrefix")
+
+    def getOnOffScheduleWlanList(self):
+        return self._config.get("SsidOnOffSchedule", "onOffScheduleWlanList").split(',')
+        
+    def getOnOffScheduleForToday(self):
+        """ return the schedule for today """
+        return self._config.get("SsidOnOffSchedule", mapSchedule[int(time.strftime("%w", time.localtime()))]).split("-")
+
+    
+    # PeriodicReboot
+    def getPeriodicRebootApNamePrefix(self):
+        return self._config.get("PeriodicReboot", "periodicRebootApNamePrefix")
+        
+    def getRebootToday(self):
+        """ return true if today is a reboot day """
+        today = int(time.strftime("%w", time.localtime()))
+        for day in self._config.get("PeriodicReboot", "periodicRebootDays").lower().split(","):
+            if mapDayOfTheWeek[day] == today:
+                return True
+        return False
+    
+    def getPeriodicRebootTime(self):
+        return self._config.get("PeriodicReboot", "periodicRebootTime")    
 
 def main():
     """ Main program: parse command line and start processing .. only for Testing """
@@ -59,6 +144,8 @@ def main():
     print myConfigManager.getToAddresses()
     print myConfigManager.getLogFile()
     print myConfigManager.getPidFile()
+    print myConfigManager.getOnOffScheduleForToday()
+    print myConfigManager.getRebootToday()
 
     
 if __name__ == '__main__':
