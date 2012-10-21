@@ -64,51 +64,13 @@ import config_manager
 import daemon
 import unifi_lab_ctlrobj
 
-ctlr_addr = ""
-ctlr_username = ""
-ctlr_password = ""
-
-feature_mac_athentication = False
-feature_rssi_reconnection = False
-feature_ssid_schedule = False
-feature_periodic_reboot = False
-
-station_rssi = dict()
-
-ap_name_prefix = ""
-wlan_list = []
-Monday_on = ""
-Monday_off = ""
-Tuesday_on = ""
-Tuesday_off = ""
-Wednesday_on = ""
-Wednesday_off = ""
-Thursday_on = ""
-Thursday_off = ""
-Friday_on = ""
-Friday_off = ""
-Saturday_on = ""
-Saturday_off = ""
-Sunday_on = ""
-Sunday_off = ""
-
-reboot_ap_name_prefix = ""
-reboot_days = ""
-reboot_time = ""
-have_rebooted = False
-
-poor_signal_base = None
-sig_reconn_threshold = None
-sig_reconn_threshold_seconds = None
-
-
+################ helper functions ################
 
 # logging is global, as we need it aways
 # we're logging minimal
 logLevel = logging.INFO
 log = logging.getLogger('Mylog')
 log.setLevel(logLevel)
-
 
 def logError(e):
     """ centralised logging method """
@@ -128,210 +90,176 @@ def logError(e):
     log.error(msg)
     return msg
 
+############### main class ######################
 
-def macAuth(ctlr, sta_list):
-    """
-        if a station was already blocked in controller, current implementation does NOT unblock it even
-        if it is in the mac auth list
-    """
-    cur_asso_list = ctlr.ctlr_get_all_sta_mac(sta_list)
-    mac_auth_list = [line.strip() for line in open('unifi_lab_mac_auth.list','r')]
-    for mac in cur_asso_list:
-        if mac in mac_auth_list:
-            log.info("[MAC Auth] This MAC is okay: %s " % mac)
-            pass
-        else:
-            log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
-            # block this station
-            ctlr.ctlr_mac_cmd(mac,"block")
-    return
+class UniFiLab:
+    _config = None
+    _ctlr = None
+    _stationList = None
+    _stationRssi = {}
+    _haveRebooted = False
+
+    def __init__(self, configManager):
+        """ init method of the object, which sets all up for the other methods"""
+        self._config = configManager
+        self._ctlr = unifi_lab_ctlrobj.MyCtlr(configManager.getControllerHost(),
+                                              configManager.getControllerUsername(),
+                                              configManager.getControllerPassword())
+        
+        # do a first login to make sure we can conect to the controller, before going to the background
+        self._ctlr.ctlr_login()
+        self._stationList = self._ctlr.ctlr_stat_sta()
+
+    def updateStationList(self):
+        """
+            only one place should update the station list, and maybe we want to use the do* methods without 
+            the continuousLoop method
+        """
+        self._stationList = self._ctlr.ctlr_stat_sta()
+
+    def doMacAuth(self):
+        """
+            if a station was already blocked in controller, current implementation does NOT unblock it even
+            if it is in the mac auth list
+        """
+        cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
+        mac_auth_list = [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
+        for mac in cur_asso_list:
+            if mac in mac_auth_list:
+                log.info("[MAC Auth] This MAC is okay: %s " % mac)
+            else:
+                log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
+                # block this station
+                self._ctlr.ctlr_mac_cmd(mac,"block")
+        return
 
 
-def poorSignalReconn(ctlr, sta_list):
-    """
-        if a station falls between rssi threshold_low and threshold_high for X seconds, then reconnect the station
-        the idea is that, the de-auth normally triggers the station to search for another AP with better signals
-        and then roams to that ap.
-        NOTE UniFi controller GUI does not display RSSI value directly; it only shows Signal strength
-        NOTE RSSI = Signal value - Noise Value (depends on the environment, usually -90 dBm)
-        By setting in the unifi_lab.init.config file, you can choose either do it based on Signal Strength or RSSI    
-    """
-    
-    cur_asso_list = ctlr.ctlr_get_all_sta_mac(sta_list)
-    for mac in cur_asso_list:
-        if station_rssi.has_key(mac):       # initialization
-            pass
-        else:
-            station_rssi[mac] = time.time()
-        if poor_signal_base == "Signal":
-            sta_stat = ctlr.ctlr_get_sta_stat_fields_by_mac(mac, ["signal"], sta_list)
-        else:
-            sta_stat = ctlr.ctlr_get_sta_stat_fields_by_mac(mac, ["rssi"], sta_list)
-        ss = sta_stat[0]
-        if station_rssi[mac] == 0:              # the station just reconnected back
-            station_rssi[mac] = time.time()
-        if ss <= sig_reconn_threshold:
-            log.info("[Poor Sig] Station %s %s %s is less than threshold, first occurred at %s" % (mac, poor_signal_base, ss, station_rssi[mac]))
-            if time.time() - station_rssi[mac] > sig_reconn_threshold_seconds:
-                log.info("[Poor Sig] Reconnect the station %s" % mac)
-                # reconnect the client
-                ctlr.ctlr_mac_cmd(mac,"reconnect")
-                station_rssi[mac] = 0
-        else:
-            log.info("[Poor Sig] Station %s %s %s is okay"  % (mac, poor_signal_base, ss))
-            station_rssi[mac] = time.time()
-    return
+    def doPoorSignalReconnect(self):
+        """
+            if a station falls between rssi threshold_low and threshold_high for X seconds, then reconnect the station
+            the idea is that, the de-auth normally triggers the station to search for another AP with better signals
+            and then roams to that ap.
+            NOTE UniFi controller GUI does not display RSSI value directly; it only shows Signal strength
+            NOTE RSSI = Signal value - Noise Value (depends on the environment, usually -90 dBm)
+            By setting in the unifi_lab.init.config file, you can choose either do it based on Signal Strength or RSSI    
+        """
+        
+        sig_reconn_threshold = self._config.getPoorSignalThreshold()
+        sig_reconn_threshold_seconds = self._config.getPoorSignalThresholdSeconds()
+        poor_signal_base = self._config.getPoorSignalBase().lower()
+        
+        cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
+        for mac in cur_asso_list:
+            # initialization
+            if not mac in self._stationRssi:
+                self._stationRssi[mac] = time.time()
+                
+            if poor_signal_base == "signal":
+                sta_stat = self._ctlr.ctlr_get_sta_stat_fields_by_mac(mac, ["signal"], self._stationList)
+            else:
+                sta_stat = self._ctlr.ctlr_get_sta_stat_fields_by_mac(mac, ["rssi"], self._stationList)
+                
+            ss = sta_stat[0]
+            if self._stationRssi[mac] == 0:              # the station just reconnected back
+                self._stationRssi[mac] = time.time()
+                
+            if ss <= sig_reconn_threshold:
+                log.info("[Poor Sig] Station %s %s %s is less than threshold, first occurred at %s" % (mac, poor_signal_base, ss, self._stationRssi[mac]))
+                if time.time() - self._stationRssi[mac] > sig_reconn_threshold_seconds:
+                    log.info("[Poor Sig] Reconnect the station %s" % mac)
+                    # reconnect the client
+                    self._ctlr.ctlr_mac_cmd(mac,"reconnect")
+                    self._stationRssi[mac] = 0
+            else:
+                log.info("[Poor Sig] Station %s %s %s is okay"  % (mac, poor_signal_base, ss))
+                self._stationRssi[mac] = time.time()
+        return
 
-def openHour(on, off):
-    """
-        this function decides if the Wifi is on or off
-    """
-    # on/off time in 24-Hour format. For example, 08:15 and 19:30
-    now = time.strftime("%H:%M", time.localtime())
-    [on_hour,on_min] = on.split(':')
-    [off_hour,off_min] = off.split(':')
-    [cur_hour,cur_min] = now.split(':')
-    if cur_hour > off_hour:
-        return False
-    elif cur_hour == off_hour and cur_min > off_min:
-        return False
-    if cur_hour < on_hour:
-        return False
-    elif cur_hour == on_hour and cur_min < on_min:
-        return False
-    return True
-
-# Monday_ON and Monday_OFF time, all the way to Sunday
-def ssidOnOffSchedule(ctlr):
-    """
-        this checks the day of the week and calls than openHour to check if need need to be
-        on or off
-    """
-    today_is = time.strftime("%a", time.localtime())
-    if today_is == "Mon":
-        power_on_time = Monday_on;  power_off_time = Monday_off
-    if today_is == "Tue":
-        power_on_time = Tuesday_on;  power_off_time = Tuesday_off
-    if today_is == "Wed":
-        power_on_time = Wednesday_on;  power_off_time = Wednesday_off
-    if today_is == "Thu":
-        power_on_time = Thursday_on;  power_off_time = Thursday_off
-    if today_is == "Fri":
-        power_on_time = Friday_on;  power_off_time = Friday_off
-    if today_is == "Sat":
-        power_on_time = Saturday_on;  power_off_time = Saturday_off
-    if today_is == "Sun":
-        power_on_time = Sunday_on;  power_off_time = Sunday_off
-    if openHour(power_on_time, power_off_time):
-        log.info("[SSID Sche] TODAY is %s NOW is OPEN" % today_is)
-        ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,True)
-    else:
-        log.info("[SSID Sche] TODAY is %s NOW is CLOSE" % today_is)
-        ctlr.ctlr_enabled_wlans_on_all_ap(ap_name_prefix,wlan_list,False)
-    return
-
-def periodicReboot(ctlr):
-    """
-        this function is responsible for rebooting the UAPs at the specified time
-    """
-    global have_rebooted
-    today_is = time.strftime("%a", time.localtime())
-    if today_is in reboot_days:
-        if not have_rebooted:
-            #use have_rebooted to ensure that rebooting happens only once a day
+    # Monday_ON and Monday_OFF time, all the way to Sunday
+    def doSsidOnOffSchedule(self):
+        def openHour(on, off):
+            """
+                this function decides if the Wifi is on or off
+            """
+            # on/off time in 24-Hour format. For example, 08:15 and 19:30
             now = time.strftime("%H:%M", time.localtime())
+            [on_hour,on_min] = on.split(':')
+            [off_hour,off_min] = off.split(':')
+            [cur_hour,cur_min] = now.split(':')
+            if cur_hour > off_hour:
+                return False
+            elif cur_hour == off_hour and cur_min > off_min:
+                return False
+            if cur_hour < on_hour:
+                return False
+            elif cur_hour == on_hour and cur_min < on_min:
+                return False
+            return True        
+        
+        """
+            this checks the day of the week and calls than openHour to check if need need to be
+            on or off
+        """
+        power_on_time, power_off_time = self._config.getOnOffScheduleForToday()
+        if openHour(power_on_time, power_off_time):
+            log.info("[SSID Sche] Now is OPEN")
+            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),True)
+        else:
+            log.info("[SSID Sche] NOW is CLOSED")
+            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),False)
+
+    def doPeriodicReboot(self):
+        """
+            this function is responsible for rebooting the UAPs at the specified time
+        """
+        if not self._haveRebooted and self._config.getRebootToday():
+            # we've not rebooted today and today is a reboot-day
+            # use self._haveRebooted to ensure that rebooting happens only once a day
+            now = time.strftime("%H:%M", time.localtime())
+            reboot_time = self._config.getPeriodicRebootTime()
             [reboot_hour,reboot_min] = reboot_time.split(':')
             [cur_hour,cur_min] = now.split(':')
             if (cur_hour == reboot_hour and cur_min >= reboot_min) or (cur_hour > reboot_hour):
-                log.info("[REBOOT] Today is: %s \tSelected day(s) for reboot: %s" % (today_is, reboot_days))
-                log.info("[REBOOT] Selected time to reboot: %s" %reboot_time)
+                reboot_ap_name_prefix = self._config.getPeriodicRebootApNamePrefix()
+                log.info("[REBOOT] Today is a reboot day")
+                log.info("[REBOOT] Selected time to reboot: %s" % reboot_time)
                 log.info("[REBOOT] Rebooting all APs with name prefix (and those without name): %s" % reboot_ap_name_prefix)
-                ctlr.ctlr_reboot_ap(reboot_ap_name_prefix)
-                have_rebooted = True
-    else:
-        have_rebooted = False
+                self._ctlr.ctlr_reboot_ap(reboot_ap_name_prefix)
+                self._haveRebooted = True
+        else:
+            self._haveRebooted = False
 
 
-def continuesLoop():
-    """
-        central function which never terminates (until the process is killed). It runs every x second through the
-        checks
-    """
-    # its a hack ... but I'll try to make it work in a Linux way before I clean it up
-    global ctlr_password, ctlr_username, feature_mac_athentication, feature_rssi_reconnection, feature_ssid_schedule, feature_periodic_reboot
-    global Saturday_on, Saturday_off, Sunday_on, Sunday_off, reboot_ap_name_prefix, reboot_days, reboot_time
-    global Tuesday_off, Wednesday_on, Wednesday_off, Thursday_on, Thursday_off, Friday_on, Friday_off
-    global wlan_list, ap_name_prefix, Monday_on, Monday_off, Tuesday_on 
-    global poor_signal_base, sig_reconn_threshold, sig_reconn_threshold_seconds
-
-
-
-    # read from config file to initialize
-    # FIXME: need to replace the whole config file
-    for rawLine in open("/etc/unifi_lab.config",'r'):
-        line = rawLine.rstip("\n").strip()
-        if line and line[0] != '#':
-            try:
-                [var,val] = line.split('=', 1)
-                log.info("> %s %s" % (var, val))
-                if var == "CTLR_ADDR":  ctlr_ip = val
-                elif var == "CTLR_USERNAME":                        ctlr_username = val
-                elif var == "CTLR_PASSWORD":                        ctlr_password = val
-                elif var == "FEATURE_MAC_AUTH" and val == "True":    feature_mac_athentication = True
-                elif var == "FEATURE_POOR_SIGNAL_RECONN" and val == "True": feature_rssi_reconnection = True
-                elif var == "POOR_SIGNAL_BASE":                     poor_signal_base = val
-                elif var == "SIGNAL_THRESHOLD":                     sig_reconn_threshold = int(val)
-                elif var == "SIGNAL_THRESHOLD_SECONDS":             sig_reconn_threshold_seconds = int(val)
-                elif var == "FEATURE_SSID_SCH" and val == "True":   feature_ssid_schedule = True
-                elif var == "WLAN_LIST":                            wlan_list = val.split(',')
-                elif var == "AP_NAME_PREFIX" and val is not None:   ap_name_prefix = val
-                elif var == "MONDAY_ON":                            Monday_on = val
-                elif var == "MONDAY_OFF":                           Monday_off = val
-                elif var == "TUESDAY_ON":                           Tuesday_on = val
-                elif var == "TUESDAY_OFF":                          Tuesday_off = val
-                elif var == "WEDNESDAY_ON":                         Wednesday_on = val
-                elif var == "WEDNESDAY_OFF":                        Wednesday_off = val
-                elif var == "THURSDAY_ON":                          Thursday_on = val
-                elif var == "THURSDAY_OFF":                         Thursday_off = val
-                elif var == "FRIDAY_ON":                            Friday_on = val
-                elif var == "FRIDAY_OFF":                           Friday_off = val
-                elif var == "SATURDAY_ON":                          Saturday_on = val
-                elif var == "SATURDAY_OFF":                         Saturday_off = val
-                elif var == "SUNDAY_ON":                            Sunday_on = val
-                elif var == "SUNDAY_OFF":                           Sunday_off = val
-                elif var == "FEATURE_PERIODIC_REBOOT" and val == "True":   feature_periodic_reboot = True
-                elif var == "REBOOT_AP_NAME_PREFIX":                reboot_ap_name_prefix = val
-                elif var == "REBOOT_DAYS":                          reboot_days = val.split(',')
-                elif var == "REBOOT_TIME":                          reboot_time = val
-            except Exception, e:
-                logError(e)
-                sys.exit(1)
-
-
-    ctlr = unifi_lab_ctlrobj.MyCtlr(ctlr_ip,ctlr_username,ctlr_password)
-    i3 = 0
-    i4 = 0
-    while True:
-        ctlr.ctlr_login()
-        stations_list = ctlr.ctlr_stat_sta()
-        
-        if feature_mac_athentication:
-            macAuth(ctlr,stations_list)
+    def continuousLoop(self):
+        """
+            method which never terminates (until the process is killed). It runs every x second through the
+            checks
+        """
+        # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
+        i3 = 0
+        i4 = 0
+        while True:
+            self._ctlr.ctlr_login()
+            # update station list
+            self.updateStationList()
             
-        if feature_rssi_reconnection:
-            poorSignalReconn(ctlr,stations_list)
+            if self._config.getEnableMacAuth():
+                self.doMacAuth()
+                
+            if self._config.getEnablePoorSignalReconnect():
+                self.doPoorSignalReconnect()
 
-        if feature_ssid_schedule and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
-            ssidOnOffSchedule(ctlr)
-            i3 = 0
-        i3 = i3 + 1
+            if self._config.getEnableSsidOnOffSchedule() and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
+                self.doSsidOnOffSchedule()
+                i3 = 0
+            i3 = i3 + 1
 
-        if feature_periodic_reboot and i4 > 11:
-            periodicReboot(ctlr)
-            i4 = 0
-        i4 = i4 + 1
-        
-        time.sleep(5)
+            if self._config.getEnablePeriodicReboot() and i4 > 11:
+                self.doPeriodicReboot()
+                i4 = 0
+            i4 = i4 + 1
+            
+            time.sleep(5)
 
 # Print usage message and exit
 def usage(*args):
@@ -369,7 +297,9 @@ def main():
             configFile = a
 
     myConfigManager = config_manager.ConfigManager(configFile)
-
+    # we instance it here so its before we go into the background
+    myUniFiLab = UniFiLab(myConfigManager)
+    
     # on non Windows Systems we go into the background
     if sys.platform in ("linux2", "darwin"):
         daemon.startstop(myConfigManager.getErrorLogFile(), pidfile=myConfigManager.getPidFile())
@@ -379,9 +309,8 @@ def main():
     _handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     log.addHandler(_handler)
 
-    
     log.info('Started')
-    continuesLoop()
+    myUniFiLab.continuousLoop()
     log.info('Stopped')
     
 if __name__ == '__main__':

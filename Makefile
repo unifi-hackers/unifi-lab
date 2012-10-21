@@ -29,15 +29,15 @@ install:
 		cp unifi_lab_production.ini $(DESTDIR)/etc/unifi_lab/unifi_lab.ini; \
 		chmod 600 $(DESTDIR)/etc/unifi_lab/unifi_lab.ini; \
 	fi
-
-        # second: unifi_lab_mac_auth.list
-        @if [ -a $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list ]; then \
-                cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list.install; \
-                chmod 644 $(DESTDIR)/etc/unifi_lab_mac_auth.list.install; \
-        else \
-                cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \
-                chmod 644 $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \
-        fi
+	
+	# second: unifi_lab_mac_auth.list
+	@if [ -a $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list ]; then \
+			cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list.install; \
+			chmod 644 $(DESTDIR)/etc/unifi_lab_mac_auth.list.install; \
+	else \
+			cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \
+			chmod 644 $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \
+	fi
 
 
 build:
