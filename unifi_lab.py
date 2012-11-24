@@ -285,11 +285,12 @@ class UniFiLab:
             checks
         """
         
+
+        # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
+        i3 = 0
+        i4 = 0
+
         while True:
-            
-            # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
-            i3 = 0
-            i4 = 0
             
             startTime = time.time()
             # it is important that we keep running even if an error occurred, lets make sure

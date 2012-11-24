@@ -12,6 +12,8 @@ install:
 	chmod 755 $(DESTDIR)/usr/lib/unifi_lab/unifi_lab
 
 	cp unifi_lab_ctlrobj.py $(DESTDIR)/usr/lib/unifi_lab/unifi_lab_ctlrobj.py
+	cp config_manager.py	$(DESTDIR)/usr/lib/unifi_lab/config_manager.py
+	cp daemon.py		$(DESTDIR)/usr/lib/unifi_lab/daemon.py
 	
 	# relative symlinks to make packaging easier
 	@cd $(DESTDIR)/usr/bin/; \
@@ -22,7 +24,7 @@ install:
 	# first: unifi_lab.ini
 	@if [ -a $(DESTDIR)/etc/unifi_lab/unifi_lab.ini ]; then \
 		cp unifi_lab_production.ini $(DESTDIR)/etc/unifi_lab/unifi_lab.ini.install; \
-		chmod 600 $(DESTDIR)/etc/unifi_lab.ini.install; \
+		chmod 600 $(DESTDIR)/etc/unifi_lab/unifi_lab.ini.install; \
 	else \
 		mkdir -p $(DESTDIR)/etc/unifi_lab; \
 		chmod 755 $(DESTDIR)/etc/unifi_lab; \
@@ -33,7 +35,7 @@ install:
 	# second: unifi_lab_mac_auth.list
 	@if [ -a $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list ]; then \
 			cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list.install; \
-			chmod 644 $(DESTDIR)/etc/unifi_lab_mac_auth.list.install; \
+			chmod 644 $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list.install; \
 	else \
 			cp unifi_lab_mac_auth.list $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \
 			chmod 644 $(DESTDIR)/etc/unifi_lab/unifi_lab_mac_auth.list; \

@@ -61,10 +61,10 @@ class ConfigManager:
         return self._config.get("Controller", "controllerHost")
         
     def getControllerUsername(self):
-        return self._config.get("Controller", "controllerUsername")
+        return self._config.get("Controller", "controllerUsername", raw=True)
         
     def getControllerPassword(self):
-        return self._config.get("Controller", "controllerPassword")      
+        return self._config.get("Controller", "controllerPassword", raw=True)      
         
         
     # Mail    
@@ -143,7 +143,7 @@ def main():
     myConfigManager = ConfigManager("unifi_lab_development.ini")
     print myConfigManager.getToAddresses()
     print myConfigManager.getLogFile()
-    print myConfigManager.getPidFile()
+    print myConfigManager.getEnablePeriodicReboot()
     print myConfigManager.getOnOffScheduleForToday()
     print myConfigManager.getRebootToday()
 
