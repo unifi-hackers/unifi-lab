@@ -145,7 +145,7 @@ class UniFiLab:
     _ctlr = None
     _stationList = None
     _stationRssi = {}
-    _haveRebooted = False
+    _haveRebootedThisDay = None
 
     def __init__(self, configManager):
         """ init method of the object, which sets all up for the other methods"""
@@ -261,22 +261,25 @@ class UniFiLab:
         """
             this function is responsible for rebooting the UAPs at the specified time
         """
-        if not self._haveRebooted and self._config.getRebootToday():
-            # we've not rebooted today and today is a reboot-day
-            # use self._haveRebooted to ensure that rebooting happens only once a day
-            now = time.strftime("%H:%M", time.localtime())
-            reboot_time = self._config.getPeriodicRebootTime()
-            [reboot_hour,reboot_min] = reboot_time.split(':')
-            [cur_hour,cur_min] = now.split(':')
-            if (cur_hour == reboot_hour and cur_min >= reboot_min) or (cur_hour > reboot_hour):
-                reboot_ap_name_prefix = self._config.getPeriodicRebootApNamePrefix()
-                log.info("[REBOOT] Today is a reboot day")
-                log.info("[REBOOT] Selected time to reboot: %s" % reboot_time)
-                log.info("[REBOOT] Rebooting all APs with name prefix (and those without name): %s" % reboot_ap_name_prefix)
-                self._ctlr.ctlr_reboot_ap(reboot_ap_name_prefix)
-                self._haveRebooted = True
+        today = self._config.getRebootToday()
+        if today:
+            # today would be a day to reboot, but have we already rebooted?
+            if today != self._haveRebootedThisDay:
+                # we've not rebooted today and today is a reboot-day
+                # use self._haveRebootedThisDay to ensure that rebooting happens only once a day
+                now = time.strftime("%H:%M", time.localtime())
+                reboot_time = self._config.getPeriodicRebootTime()
+                [reboot_hour,reboot_min] = reboot_time.split(':')
+                [cur_hour,cur_min] = now.split(':')
+                if (cur_hour == reboot_hour and cur_min >= reboot_min) or (cur_hour > reboot_hour):
+                    reboot_ap_name_prefix = self._config.getPeriodicRebootApNamePrefix()
+                    log.info("[REBOOT] Today is a reboot day")
+                    log.info("[REBOOT] Selected time to reboot: %s" % reboot_time)
+                    log.info("[REBOOT] Rebooting all APs with name prefix (and those without name): %s" % reboot_ap_name_prefix)
+                    self._ctlr.ctlr_reboot_ap(reboot_ap_name_prefix)
+                    self._haveRebootedThisDay = today
         else:
-            self._haveRebooted = False
+            self._haveRebootedThisDay = None
 
 
     def continuousLoop(self):
