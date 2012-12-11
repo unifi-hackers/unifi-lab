@@ -127,7 +127,7 @@ class ConfigManager:
     def getPeriodicRebootApNamePrefix(self):
         return self._config.get("PeriodicReboot", "periodicRebootApNamePrefix")
         
-    def getRebootNow(self):
+    def getRebootToday(self):
         """ 
             return the current day if today is a reboot day and None if not.
         """
