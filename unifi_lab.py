@@ -67,9 +67,6 @@ Yours,
 UniFi Labs
 """
 
-# FIXME: move that to the config file
-# how often should the code run in seconds 
-interval = 5
 
 
 ###################### no changes beyond that line needed ####################
@@ -153,7 +150,7 @@ class UniFiLab:
         self._ctlr = unifi_lab_ctlrobj.MyCtlr(configManager.getControllerHost(),
                                               configManager.getControllerUsername(),
                                               configManager.getControllerPassword())
-        
+        self.interval = configManager.getInterval()
         # do a first login to make sure we can conect to the controller, before going to the background
         # FIXME: does not raise a exception if login does not work
         self._ctlr.ctlr_login()
@@ -333,7 +330,7 @@ class UniFiLab:
                 
                 
                 # make sure that we runn every x seconds (including the time it took to work
-                sleepTime = interval + 1 - (time.time() - startTime)
+                sleepTime = self.interval + 1 - (time.time() - startTime)
 
                 if sleepTime < 0:
                     log.error("System is too slow for %d sec interval by %d seconds" % (interval, abs(int(sleepTime))))
@@ -343,7 +340,7 @@ class UniFiLab:
             except Exception, e:
                 # log error, and mail it ... and lets wait 10 times as long .... 
                 sendMail(errorMessageText % {"error": logError(e)}, self._config)
-                sleepTime = interval * 10 + 1 - (time.time() - startTime)
+                sleepTime = self.interval * 10 + 1 - (time.time() - startTime)
                 if sleepTime < 0:
                     log.error("System is too slow for %d sec interval by %d seconds" % (10*interval, abs(int(sleepTime))))
                 else:

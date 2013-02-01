@@ -58,6 +58,8 @@ class ConfigManager:
     def getErrorLogFile(self):
         return self._config.get("General", "errorLogFile")
     
+    def getInterval(self):
+        return int(self._config.get("General", "interval"))
     
     # Controller
     def getControllerHost(self):
@@ -151,7 +153,7 @@ def main():
     print myConfigManager.getEnablePeriodicReboot()
     print myConfigManager.getOnOffScheduleForToday()
     print myConfigManager.getRebootToday()
-
+    print myConfigManager.getInterval()
     
 if __name__ == '__main__':
     main()
