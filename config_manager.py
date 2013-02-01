@@ -8,7 +8,10 @@ import os
 import sys
 import time
 
-defaultConfigFile = "/etc/unifi_lab/unifi_lab.ini"
+if sys.platform in ('win32', 'cli'):
+    defaultConfigFile = "unifi_lab.ini"
+else:
+    defaultConfigFile = "/etc/unifi_lab/unifi_lab.ini"
 
 # Weekday as a decimal number [0(Sunday),6].
 # we map it by hand as %A depends on the local language --> we use %w
