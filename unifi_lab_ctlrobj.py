@@ -29,6 +29,8 @@
 import os
 import json
 import time
+from urllib import urlencode
+import urllib2
 
 class MyCtlr:
     ###############################################################
@@ -49,17 +51,26 @@ class MyCtlr:
         self.ctlr_username = ctlr_web_id
         self.ctlr_password = ctlr_web_pw
         self.ctlr_url = "https://"+ip+":8443/"
-        self.curl = "curl -s --sslv3 --cookie unifi_cookie --cookie-jar unifi_cookie --insecure "
+        self._cookie=None
 
     ###############################################################
     ## CONTROLLER FUNCTIONS                                      ##
     ###############################################################
+    def curl(self,func,data=None):
+        """ Need to make error checking"""
+        req = urllib2.Request(self.ctlr_url+func,data)
+        if self._cookie:
+            req.add_header("set-cookie", self._cookie)
+        uo=urllib2.urlopen(req)
+        self._cookie = uo.headers.dict.get('set-cookie', self._cookie)
+        d = uo.read()
+        return d
 
     def make_datastr(self, ll):
         dstr = ""
         for couple in ll:
-            dstr = dstr + "--data \"" + str(couple[0]) + "=" + str(couple[1]) + "\" "
-        return dstr
+            dstr = dstr + str(couple[0]) + "=" + str(couple[1]) + "&"
+        return dstr[:-1]
 
     def make_jsonstr(self, ll):
         jstr = ""
@@ -72,16 +83,28 @@ class MyCtlr:
         return json.loads(json.dumps(decoded["data"]))
 
     def ctlr_login(self):
-        return os.popen(self.curl + self.make_datastr([["login","login"],["username",self.ctlr_username],["password",self.ctlr_password]]) + self.ctlr_url + "login").read()
+        return self.curl ("login", self.make_datastr([["login","login"],["username",self.ctlr_username],["password",self.ctlr_password]]))
+
+    def ctrl_stat_user_blocked(self):
+        return self.curl("api/list/user", "json={\"blocked\":true}")
+
+    def ctrl_list_group_members(self,group_id):
+        return self.curl("api/list/user", "json="+json.dumps({'usergroup_id':group_id}))
+
+    def ctrl_list_group(self):
+        grouplist={}
+        for g in self.decode_json(self.curl("api/list/usergroup")):
+            grouplist[g['name']]=g
+        return grouplist
 
     def ctlr_stat_device(self):
-        return os.popen(self.curl + self.make_datastr([["json",self.make_jsonstr([["_depth","2"],["test","null"]])]]) + self.ctlr_url + "api/stat/device").read()
+        return self.curl( "api/stat/device", self.make_datastr([["json",self.make_jsonstr([["_depth","2"],["test","null"]])]]) )
 
     def ctlr_stat_sta(self):
-        return os.popen(self.curl + self.ctlr_url + "api/stat/sta").read()
+        return self.curl("api/stat/sta")
 
     def ctlr_wlan_conf(self):
-        return os.popen(self.curl + self.ctlr_url + "api/list/wlanconf").read()
+        return self.curl("api/list/wlanconf")
 
     def ctlr_reboot_ap(self, apnamefilter=""):
         aplist = self.ctlr_stat_device()
@@ -141,31 +164,34 @@ class MyCtlr:
                                     owlan.append(wlan)
                     if self.debug>0 and ap.has_key('name'): print ap['name'], "all WLANs change to", en
                     if self.debug>0 and not ap.has_key('name'): print ap['mac'], "all WLANs change to", en
-                    curlcmd = self.curl + self.make_datastr([["json",json.dumps(dict(wlan_overrides=owlan)).replace("\"",'%22')]]) + self.ctlr_url + "api/upd/device/" + ap['_id']
-                    if self.debug>0: print curlcmd
+                    curlcmddata = self.make_datastr([["json",json.dumps(dict(wlan_overrides=owlan)).replace("\"",'%22')]])
+                    curlcmdfunc = "api/upd/device/" + ap['_id']
+                    if self.debug>0: print curlcmdfunc+" "+curlcmddata
                     if self.debug>0:
-                        print os.popen(curlcmd).read()
+                        print curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
                     else:
-                        os.popen(curlcmd).read()
+                        curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
                     return True
         except ValueError:
             pass
         return False
 
     def ctlr_mac_cmd(self, target_mac, command):
+        curlfunc="api/cmd/stamgr"
         if command == "block":
-            curlcmd = self.curl + self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="block-sta")).replace("\"",'%22')]]) + self.ctlr_url + "api/cmd/stamgr"
+            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="block-sta")).replace("\"",'%22')]])
         elif command == "unblock":
-            curlcmd = self.curl + self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="unblock-sta")).replace("\"",'%22')]]) + self.ctlr_url + "api/cmd/stamgr"
+            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="unblock-sta")).replace("\"",'%22')]])
         elif command == "reconnect":
-            curlcmd = self.curl + self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="kick-sta")).replace("\"",'%22')]]) + self.ctlr_url + "api/cmd/stamgr"
+            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="kick-sta")).replace("\"",'%22')]])
         elif command == "restart":
-            curlcmd = self.curl + self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="restart")).replace("\"",'%22')]]) + self.ctlr_url + "api/cmd/devmgr"
+            curlfunc="api/cmd/devmgr"
+            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="restart")).replace("\"",'%22')]])
         if self.debug>0: print curlcmd
         if self.debug>0:
-            print os.popen(curlcmd).read()
+            print self.curl(curlfunc, curlcmd)
         else:
-            os.popen(curlcmd).read()
+            self.curl(curlfunc, curlcmd)
         return True
 
     def ctlr_get_ap_stat_field(self, apname, tag, aplist=""):
@@ -217,3 +243,5 @@ class MyCtlr:
                     return rtag
         except ValueError:
             pass
+print "installing handler for correct redirect"
+urllib2.install_opener(urllib2.build_opener(urllib2.HTTPCookieProcessor()))
