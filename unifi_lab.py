@@ -168,18 +168,31 @@ class UniFiLab:
 
     def doMacAuth(self):
         """
-            if a station was already blocked in controller, current implementation does NOT unblock it even
+            if a station was already blocked in controller, current implementation does unblock it
             if it is in the mac auth list
         """
+        str_blockedlist = self._ctlr.ctrl_stat_user_blocked()
+        mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
+#        print "blacklist:%s"%mac_blockedlist
         cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
         mac_auth_list = [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
+        groups = self._ctlr.ctrl_list_group()
+        str_whitelist = self._ctlr.ctrl_list_group_members(groups['Allow']['_id'])
+        mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
+        mac_auth_list = mac_auth_list + mac_whitelist
+#        print "whitelist:%s"%mac_auth_list
+        for mac in mac_auth_list:
+            if mac in mac_blockedlist:
+                log.info("[MAC Auth] This MAC needs to be unblocked: %s", mac)
+                # unblock this station
+                self._ctlr.ctlr_mac_cmd(mac,"unblock")                
         for mac in cur_asso_list:
-            if mac in mac_auth_list:
-                log.info("[MAC Auth] This MAC is okay: %s " % mac)
-            else:
+            if mac not in mac_auth_list:
                 log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
                 # block this station
                 self._ctlr.ctlr_mac_cmd(mac,"block")
+            else:
+                pass##log.info("[MAC Auth] This MAC is okay: %s " % mac)
         return
 
 
