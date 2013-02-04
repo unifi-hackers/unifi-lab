@@ -80,7 +80,7 @@ import traceback
 import getopt
 import smtplib
 from email.MIMEText import MIMEText
-
+import re
 
 # shipped with unifi_lab
 import config_manager
@@ -172,11 +172,24 @@ class UniFiLab:
         mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
 #        print "blacklist:%s"%mac_blockedlist
         cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
-        mac_auth_list = [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
+
         groups = self._ctlr.ctrl_list_group()
-        str_whitelist = self._ctlr.ctrl_list_group_members(groups['Allow']['_id'])
-        mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
-        mac_auth_list = mac_auth_list + mac_whitelist
+        mac_auth_list = [] # [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
+        pattern = r'\S?(?:(?P<mac>(?:[\da-f]{2}[:-]){5}[\da-f]{2})|(?:\"(?P<whitegroup>\w+?)\"))\S?(?:#.*)?'
+        for line in open(self._config.getMacAuthListFile(),'r'):
+            m = re.match(pattern, line, re.I)
+            if not m:
+                log.error('Wrong line in config %s'%line)
+                continue
+            m = m.groupdict()
+            if m['mac']:
+                mac_auth_list += m['mac'].lower().replace('-',':')
+            if m['whitegroup']:
+                str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
+                mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
+                mac_auth_list = mac_auth_list + mac_whitelist                
+            pass
+
 #        print "whitelist:%s"%mac_auth_list
         for mac in mac_auth_list:
             if mac in mac_blockedlist:
