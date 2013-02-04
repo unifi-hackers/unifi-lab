@@ -168,10 +168,6 @@ class UniFiLab:
             if a station was already blocked in controller, current implementation does unblock it
             if it is in the mac auth list
         """
-        str_blockedlist = self._ctlr.ctrl_stat_user_blocked()
-        mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
-#        print "blacklist:%s"%mac_blockedlist
-        cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
 
         groups = self._ctlr.ctrl_list_group()
         mac_auth_list = [] # [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
@@ -189,13 +185,9 @@ class UniFiLab:
                 mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
                 mac_auth_list = mac_auth_list + mac_whitelist                
             pass
-
 #        print "whitelist:%s"%mac_auth_list
-        for mac in mac_auth_list:
-            if mac in mac_blockedlist:
-                log.info("[MAC Auth] This MAC needs to be unblocked: %s", mac)
-                # unblock this station
-                self._ctlr.ctlr_mac_cmd(mac,"unblock")                
+
+        cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
         for mac in cur_asso_list:
             if mac not in mac_auth_list:
                 log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
@@ -203,6 +195,15 @@ class UniFiLab:
                 self._ctlr.ctlr_mac_cmd(mac,"block")
             else:
                 pass##log.info("[MAC Auth] This MAC is okay: %s " % mac)
+ 
+        str_blockedlist = self._ctlr.ctrl_stat_user_blocked()
+        mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
+#        print "blacklist:%s"%mac_blockedlist
+        for mac in mac_auth_list:
+            if mac in mac_blockedlist:
+                log.info("[MAC Auth] This MAC needs to be unblocked: %s", mac)
+                # unblock this station
+                self._ctlr.ctlr_mac_cmd(mac,"unblock")                
         return
 
 
