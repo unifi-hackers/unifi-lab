@@ -347,7 +347,7 @@ class UniFiLab:
                 sleepTime = self.interval + 1 - (time.time() - startTime)
 
                 if sleepTime < 0:
-                    log.error("System is too slow for %d sec interval by %d seconds" % (interval, abs(int(sleepTime))))
+                    log.error("System is too slow for %d sec interval by %d seconds" % (self.interval, abs(int(sleepTime))))
                 else:
                     time.sleep(sleepTime)
                     
