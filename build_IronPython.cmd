@@ -1,0 +1,11 @@
+SET PYLIB=C:\Program Files\IronPython 2.7\Lib
+SET PY="C:\Program Files\IronPython 2.7\ipy.exe"
+SET PYC="C:\Program Files\IronPython 2.7\Tools\Scripts\pyc.py"
+SET LiBjson="%PYLIB%\json\decoder.py" "%PYLIB%\json\encoder.py" "%PYLIB%\json\scanner.py" "%PYLIB%\json\__init__.py"
+SET LiBMail="%PYLIB%\rfc822.py" "%PYLIB%\smtplib.py" "%PYLIB%\email\base64mime.py" "%PYLIB%\email\charset.py" "%PYLIB%\email\encoders.py" "%PYLIB%\email\errors.py" "%PYLIB%\email\iterators.py" "%PYLIB%\email\message.py" "%PYLIB%\email\mime\base.py" "%PYLIB%\email\mime\message.py" "%PYLIB%\email\mime\nonmultipart.py" "%PYLIB%\email\mime\text.py" "%PYLIB%\email\mime\__init__.py" "%PYLIB%\email\quoprimime.py" "%PYLIB%\email\utils.py" "%PYLIB%\email\_parseaddr.py" "%PYLIB%\email\__init__.py"
+SET LiBurl="%PYLIB%\urllib.py" "%PYLIB%\urllib2.py" "%PYLIB%\urlparse.py"
+SET LiBencode="%PYLIB%\codecs.py" "%PYLIB%\base64.py" "%PYLIB%\encodings\aliases.py" "%PYLIB%\encodings\hex_codec.py" "%PYLIB%\encodings\__init__.py" "%PYLIB%\uu.py" "%PYLIB%\quopri.py"
+SET LiBcookie="%PYLIB%\cookielib.py" "%PYLIB%\_LWPCookieJar.py" "%PYLIB%\_MozillaCookieJar.py"
+SET LiBother="%PYLIB%\abc.py" "%PYLIB%\atexit.py" "%PYLIB%\bisect.py" "%PYLIB%\calendar.py" "%PYLIB%\collections.py" "%PYLIB%\ConfigParser.py" "%PYLIB%\copy.py" "%PYLIB%\dummy_thread.py" "%PYLIB%\dummy_threading.py" "%PYLIB%\functools.py" "%PYLIB%\genericpath.py" "%PYLIB%\getopt.py" "%PYLIB%\hashlib.py" "%PYLIB%\heapq.py" "%PYLIB%\hmac.py" "%PYLIB%\httplib.py" "%PYLIB%\keyword.py" "%PYLIB%\linecache.py" "%PYLIB%\locale.py" "%PYLIB%\logging\handlers.py" "%PYLIB%\logging\__init__.py" "%PYLIB%\mimetools.py" "%PYLIB%\ntpath.py" "%PYLIB%\nturl2path.py" "%PYLIB%\os.py" "%PYLIB%\posixpath.py" "%PYLIB%\random.py" "%PYLIB%\site.py" "%PYLIB%\ssl.py" "%PYLIB%\stat.py" "%PYLIB%\string.py" "%PYLIB%\struct.py" "%PYLIB%\tempfile.py" "%PYLIB%\textwrap.py" "%PYLIB%\threading.py" "%PYLIB%\traceback.py" "%PYLIB%\types.py" "%PYLIB%\UserDict.py" "%PYLIB%\warnings.py" "%PYLIB%\weakref.py" "%PYLIB%\_abcoll.py" "%PYLIB%\_weakrefset.py" "%PYLIB%\__future__.py"
+SET LiBS=%LiBjson% %LiBMail% %LiBurl% %LiBencode% %LiBcookie% %LiBother%
+%PY% %PYC% /main:unifi_lab.py unifi_lab_ctlrobj.py daemon.py config_manager.py %LiBS%

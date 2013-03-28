@@ -8,7 +8,10 @@ import os
 import sys
 import time
 
-defaultConfigFile = "/etc/unifi_lab/unifi_lab.ini"
+if sys.platform in ('win32', 'cli'):
+    defaultConfigFile = "unifi_lab.ini"
+else:
+    defaultConfigFile = "/etc/unifi_lab/unifi_lab.ini"
 
 # Weekday as a decimal number [0(Sunday),6].
 # we map it by hand as %A depends on the local language --> we use %w
@@ -55,6 +58,8 @@ class ConfigManager:
     def getErrorLogFile(self):
         return self._config.get("General", "errorLogFile")
     
+    def getInterval(self):
+        return int(self._config.get("General", "interval"))
     
     # Controller
     def getControllerHost(self):
@@ -148,7 +153,7 @@ def main():
     print myConfigManager.getEnablePeriodicReboot()
     print myConfigManager.getOnOffScheduleForToday()
     print myConfigManager.getRebootToday()
-
+    print myConfigManager.getInterval()
     
 if __name__ == '__main__':
     main()

@@ -67,9 +67,6 @@ Yours,
 UniFi Labs
 """
 
-# FIXME: move that to the config file
-# how often should the code run in seconds 
-interval = 5
 
 
 ###################### no changes beyond that line needed ####################
@@ -83,7 +80,7 @@ import traceback
 import getopt
 import smtplib
 from email.MIMEText import MIMEText
-
+import re
 
 # shipped with unifi_lab
 import config_manager
@@ -153,7 +150,7 @@ class UniFiLab:
         self._ctlr = unifi_lab_ctlrobj.MyCtlr(configManager.getControllerHost(),
                                               configManager.getControllerUsername(),
                                               configManager.getControllerPassword())
-        
+        self.interval = configManager.getInterval()
         # do a first login to make sure we can conect to the controller, before going to the background
         # FIXME: does not raise a exception if login does not work
         self._ctlr.ctlr_login()
@@ -168,18 +165,45 @@ class UniFiLab:
 
     def doMacAuth(self):
         """
-            if a station was already blocked in controller, current implementation does NOT unblock it even
+            if a station was already blocked in controller, current implementation does unblock it
             if it is in the mac auth list
         """
+
+        groups = self._ctlr.ctrl_list_group()
+        mac_auth_list = [] # [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
+        pattern = r'\S?(?:(?P<mac>(?:[\da-f]{2}[:-]){5}[\da-f]{2})|(?:\"(?P<whitegroup>\w+?)\"))\S?(?:#.*)?'
+        for line in open(self._config.getMacAuthListFile(),'r'):
+            m = re.match(pattern, line, re.I)
+            if not m:
+                log.error('Wrong line in config %s'%line)
+                continue
+            m = m.groupdict()
+            if m['mac']:
+                mac_auth_list += m['mac'].lower().replace('-',':')
+            if m['whitegroup']:
+                str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
+                mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
+                mac_auth_list = mac_auth_list + mac_whitelist                
+            pass
+#        print "whitelist:%s"%mac_auth_list
+
         cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
-        mac_auth_list = [line.strip() for line in open(self._config.getMacAuthListFile(),'r')]
         for mac in cur_asso_list:
-            if mac in mac_auth_list:
-                log.info("[MAC Auth] This MAC is okay: %s " % mac)
-            else:
+            if mac not in mac_auth_list:
                 log.info("[MAC Auth] This MAC needs to be blocked: %s", mac)
                 # block this station
                 self._ctlr.ctlr_mac_cmd(mac,"block")
+            else:
+                pass##log.info("[MAC Auth] This MAC is okay: %s " % mac)
+ 
+        str_blockedlist = self._ctlr.ctrl_stat_user_blocked()
+        mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
+#        print "blacklist:%s"%mac_blockedlist
+        for mac in mac_auth_list:
+            if mac in mac_blockedlist:
+                log.info("[MAC Auth] This MAC needs to be unblocked: %s", mac)
+                # unblock this station
+                self._ctlr.ctlr_mac_cmd(mac,"unblock")                
         return
 
 
@@ -320,17 +344,17 @@ class UniFiLab:
                 
                 
                 # make sure that we runn every x seconds (including the time it took to work
-                sleepTime = interval + 1 - (time.time() - startTime)
+                sleepTime = self.interval + 1 - (time.time() - startTime)
 
                 if sleepTime < 0:
-                    log.error("System is too slow for %d sec interval by %d seconds" % (interval, abs(int(sleepTime))))
+                    log.error("System is too slow for %d sec interval by %d seconds" % (self.interval, abs(int(sleepTime))))
                 else:
                     time.sleep(sleepTime)
                     
             except Exception, e:
                 # log error, and mail it ... and lets wait 10 times as long .... 
                 sendMail(errorMessageText % {"error": logError(e)}, self._config)
-                sleepTime = interval * 10 + 1 - (time.time() - startTime)
+                sleepTime = self.interval * 10 + 1 - (time.time() - startTime)
                 if sleepTime < 0:
                     log.error("System is too slow for %d sec interval by %d seconds" % (10*interval, abs(int(sleepTime))))
                 else:
