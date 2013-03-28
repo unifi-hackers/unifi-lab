@@ -5,6 +5,12 @@ like a text-version browser, and is controlled by python scripts. You can think
 of UniFi-Lab as a robot IT that always monitors the controller and takes actions
 when needed.
 
+UniFi lab was initially made available through Ubiquiti Networks as example
+how to instrument the UniFi API. As of writing thanks to this code drop others
+have been inspired to create (even cleaner) interfaces to the UniFi API. For 
+example have please have a look at Jakob Borg's unifi-api for Python 
+(https://github.com/calmh/unifi-api).
+
 # Features
 ## MAC Addresses White List
 The UniFi controller will block any MAC that is not on the list.
