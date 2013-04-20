@@ -168,9 +168,9 @@ class MyCtlr:
                     curlcmdfunc = "api/upd/device/" + ap['_id']
                     if self.debug>0: print curlcmdfunc+" "+curlcmddata
                     if self.debug>0:
-                        print curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
+                        print self.curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
                     else:
-                        curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
+                        self.curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
                     return True
         except ValueError:
             pass
