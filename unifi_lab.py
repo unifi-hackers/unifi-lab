@@ -179,7 +179,7 @@ class UniFiLab:
                 continue
             m = m.groupdict()
             if m['mac']:
-                mac_auth_list += m['mac'].lower().replace('-',':')
+                mac_auth_list.append(m['mac'].lower().replace('-',':'))
             if m['whitegroup']:
                 str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
                 mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
