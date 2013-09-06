@@ -19,7 +19,7 @@ mapSchedule = { 0: "onOffScheduleSunday",
                 1: "onOffScheduleMonday", 
                 2: "onOffScheduleTuesday", 
                 3: "onOffScheduleWednesday", 
-                4: "onOffScheduleTursday", 
+                4: "onOffScheduleThursday", 
                 5: "onOffScheduleFriday", 
                 6: "onOffScheduleSaturday"
                }
