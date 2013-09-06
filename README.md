@@ -127,6 +127,7 @@ There are no other parameters for MAC_AUTH. The white list file "unifi_lab_mac_a
 ## WLANs on/off schedule feature
 * onOffScheduleApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
 * onOffScheduleWlanList = wlan1,wlan2,wlan3,wlan4.  This is a list of WLANs that will be controlled by the scheduler, separated by a comma ",".
+* onOffScheduleWlanOverrideOffList = wlan5,wlan6.  This is a list of WLANs that will be overridden to off permanently for these APs, separated by comma ','
 * onOffScheduleMonday = 09:00-19:00
 * onOffScheduleTuesday = 09:00-19:00
 * onOffScheduleWednesday = 09:00-19:00
