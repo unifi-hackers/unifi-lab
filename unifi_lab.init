@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# /etc/init.d/unifi_lab -- startup script for Ubiquiti UniFi Lab
+#
+#
+### BEGIN INIT INFO
+# Provides:          unifi_lab
+# Required-Start:    $local_fs $remote_fs $network
+# Required-Stop:     $local_fs $remote_fs $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: UniFi Lab
+# Description:       UniFi Lab
+### END INIT INFO
+
+NAME="unifi_lab"
+DESC="Ubiquiti UniFi Lab"
+
+BASEDIR="/usr/lib/unifi_lab"
+
+PIDFILE="/var/run/${NAME}.pid"
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
+
+[ -f /etc/default/rcS ] && . /etc/default/rcS
+. /lib/lsb/init-functions
+
+[ -d /var/run/${NAME} ] || mkdir -p /var/run/${NAME}
+cd ${BASEDIR}
+
+is_not_running() {
+  if ps aux | grep -v grep | grep unifi_lab.py > /dev/null
+	then
+		RC=1
+	else
+		RC=0
+	fi
+	return ${RC}
+}
+
+case "$1" in
+	start)
+		log_daemon_msg "Starting ${DESC}" "${NAME}"
+		if is_not_running; then
+			python ${BASEDIR}/unifi_lab.py start
+			sleep 1
+			if is_not_running; then
+				log_end_msg 1
+			else
+				log_end_msg 0
+			fi
+		else
+			log_progress_msg "(already running)"
+			log_end_msg 1
+		fi
+	;;
+	stop)
+		log_daemon_msg "Stopping ${DESC}" "${NAME}"
+		if is_not_running; then
+			log_progress_msg "(not running)"
+		else
+			python ${BASEDIR}/unifi_lab.py stop
+		fi
+		log_end_msg 0
+	;;
+	status)
+		status_of_proc -p ${PIDFILE} unifi_lab unifi_lab && exit 0 || exit $?
+	;;
+	restart|reload|force-reload)
+		if ! is_not_running ; then
+			if which invoke-rc.d >/dev/null 2>&1; then
+				invoke-rc.d ${NAME} stop
+			else
+				/etc/init.d/${NAME} stop
+			fi
+		fi
+		if which invoke-rc.d >/dev/null 2>&1; then
+			invoke-rc.d ${NAME} start
+		else
+			/etc/init.d/${NAME} start
+		fi
+	;;
+	*)
+		log_success_msg "Usage: $0 {start|stop|restart|reload|force-reload}"
+		exit 1
+	;;
+esac
+
+exit 0
