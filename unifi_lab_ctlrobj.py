@@ -110,7 +110,7 @@ class MyCtlr:
         aplist = self.ctlr_stat_device()
         try:
             for ap in self.decode_json(aplist):
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if (ap.has_key('name') and ap['name'].startswith(apnamefilter)) or not ap.has_key('name'):
                     if ap.has_key('name'): print "Rebooting AP:", ap['name']
@@ -125,7 +125,7 @@ class MyCtlr:
         if self.debug>0: print "Configure all Wireless LANs status to", en
         try:
             for ap in self.decode_json(aplist):
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if ap.has_key('name') and ap['name'].startswith(apnamefilter):
                     self.ctlr_enabled_wlans(ap['name'], target_wlan, en, aplist, wlanlist, wlans_forced_off)
@@ -142,7 +142,7 @@ class MyCtlr:
         try:
             for ap in self.decode_json(aplist):
                 twlan = list(target_wlan)
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if (ap.has_key('name') and apname == ap['name']) or (not ap.has_key('name') and apname == ap['mac']):
                     if len(twlan) > 0:
