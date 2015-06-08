@@ -19,7 +19,7 @@ mapSchedule = { 0: "onOffScheduleSunday",
                 1: "onOffScheduleMonday", 
                 2: "onOffScheduleTuesday", 
                 3: "onOffScheduleWednesday", 
-                4: "onOffScheduleTursday", 
+                4: "onOffScheduleThursday", 
                 5: "onOffScheduleFriday", 
                 6: "onOffScheduleSaturday"
                }
@@ -123,6 +123,9 @@ class ConfigManager:
     def getOnOffScheduleWlanList(self):
         return self._config.get("SsidOnOffSchedule", "onOffScheduleWlanList").split(',')
         
+    def getOnOffScheduleWlanOverrideOffList(self):
+        return self._config.get("SsidOnOffSchedule", "onOffScheduleWlanOverrideOffList").split(',')
+
     def getOnOffScheduleForToday(self):
         """ return the schedule for today """
         return self._config.get("SsidOnOffSchedule", mapSchedule[int(time.strftime("%w", time.localtime()))]).split("-")

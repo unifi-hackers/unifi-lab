@@ -110,7 +110,7 @@ class MyCtlr:
         aplist = self.ctlr_stat_device()
         try:
             for ap in self.decode_json(aplist):
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if (ap.has_key('name') and ap['name'].startswith(apnamefilter)) or not ap.has_key('name'):
                     if ap.has_key('name'): print "Rebooting AP:", ap['name']
@@ -119,30 +119,30 @@ class MyCtlr:
         except ValueError:
             pass        
 
-    def ctlr_enabled_wlans_on_all_ap(self, apnamefilter="", target_wlan=[], en=True):
+    def ctlr_enabled_wlans_on_all_ap(self, apnamefilter="", target_wlan=[], en=True, wlans_forced_off=[]):
         aplist = self.ctlr_stat_device()
         wlanlist = self.ctlr_wlan_conf()
         if self.debug>0: print "Configure all Wireless LANs status to", en
         try:
             for ap in self.decode_json(aplist):
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if ap.has_key('name') and ap['name'].startswith(apnamefilter):
-                    self.ctlr_enabled_wlans(ap['name'], target_wlan, en, aplist, wlanlist)
+                    self.ctlr_enabled_wlans(ap['name'], target_wlan, en, aplist, wlanlist, wlans_forced_off)
                 elif not ap.has_key('name'):
-                    self.ctlr_enabled_wlans(ap['mac'], target_wlan, en, aplist, wlanlist)
+                    self.ctlr_enabled_wlans(ap['mac'], target_wlan, en, aplist, wlanlist, wlans_forced_off)
         except ValueError:
             pass
 
     # this function maintains enable/disable state of wlan, but will restore any security that was being overrided
-    def ctlr_enabled_wlans(self, apname, target_wlan=[], en=True, aplist="", wlanlist=""):
+    def ctlr_enabled_wlans(self, apname, target_wlan=[], en=True, aplist="", wlanlist="", wlans_forced_off=[]):
         if aplist == "": aplist = self.ctlr_stat_device()
         if wlanlist == "": wlanlist = self.ctlr_wlan_conf()
         owlan = []
         try:
             for ap in self.decode_json(aplist):
                 twlan = list(target_wlan)
-                if ap['state'] != 1:
+                if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if (ap.has_key('name') and apname == ap['name']) or (not ap.has_key('name') and apname == ap['mac']):
                     if len(twlan) > 0:
@@ -154,6 +154,9 @@ class MyCtlr:
                                 if wlan['name'] in twlan:
                                     wlan['enabled']=en                            
                                     owlan.append(wlan)
+                                if wlan['name'] in wlans_forced_off:
+                                    wlan['enabled']=False
+                                    owlan.append(wlan)
                         if ap['model'] == "U5O" or ap['model'] == "U7P":
                             for wlan in self.decode_json(wlanlist):
                                 wlan['radio']='na'
@@ -161,6 +164,9 @@ class MyCtlr:
                                 del wlan['_id']
                                 if wlan['name'] in twlan:
                                     wlan['enabled']=en
+                                    owlan.append(wlan)
+                                if wlan['name'] == "Neenah" or wlan['name'] == "Neenah-priv":
+                                    wlan['enabled']=False
                                     owlan.append(wlan)
                     if self.debug>0 and ap.has_key('name'): print ap['name'], "all WLANs change to", en
                     if self.debug>0 and not ap.has_key('name'): print ap['mac'], "all WLANs change to", en

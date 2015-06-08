@@ -276,10 +276,10 @@ class UniFiLab:
         power_on_time, power_off_time = self._config.getOnOffScheduleForToday()
         if openHour(power_on_time, power_off_time):
             log.info("[SSID Sche] Now is OPEN")
-            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),True)
+            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),True,self._config.getOnOffScheduleWlanOverrideOffList())
         else:
             log.info("[SSID Sche] NOW is CLOSED")
-            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),False)
+            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),False,self._config.getOnOffScheduleWlanOverrideOffList())
 
     def doPeriodicReboot(self):
         """

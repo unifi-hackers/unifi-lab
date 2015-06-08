@@ -5,6 +5,12 @@ like a text-version browser, and is controlled by python scripts. You can think
 of UniFi-Lab as a robot IT that always monitors the controller and takes actions
 when needed.
 
+UniFi lab was initially made available through Ubiquiti Networks as example
+how to instrument the UniFi API. As of writing thanks to this code drop others
+have been inspired to create (even cleaner) interfaces to the UniFi API. For 
+example have please have a look at Jakob Borg's unifi-api for Python 
+(https://github.com/calmh/unifi-api).
+
 # Features
 ## MAC Addresses White List
 The UniFi controller will block any MAC that is not on the list.
@@ -36,6 +42,7 @@ The UniFi-Lab utility needs to interact with the UniFi controller, therefore
 '''UniFi controller must be up and running'''. It also needs these two software installed
 * Python 2.x
 * Curl
+
 Below we demonstrate installation steps in different operating systems.
 
 ## Debian 6.0
@@ -70,13 +77,14 @@ also.
 UniFi-Lab can be downloaded from here.
 
 There are four files included in the UniFi-Lab,
-* '''unifi_lab.init.config''' => This is the configuration file of UniFi-Lab
+* '''unifi_lab_production.ini''' => This is the configuration file of UniFi-Lab
 * '''unifi_lab.py''' => This is the main execution script
 * '''unifi_lab_ctlrobj.py''' => This has functions that we used to interact with the controller
 * '''unifi_lab_mac_auth.list''' => This is used by MAC authentication feature. It contains the white list of allowed MAC addresses.
 
-# Installation
+# Installation for Manual run
 Create a directory and put above files under it.
+Copy '''unifi_lab_production.ini''' to /etc/unifi_lab/unifi_lab.ini and modify for your environment
 
 For Windows, make sure that curl.exe is also under the same folder.
 
@@ -86,77 +94,65 @@ CLI, go to the directory, run "'''python unifi_lab.py'''" to start. To stop,
 press "Ctlr-C".  If you change the config file while running, you also need to
 restart the UniFi-Lab to reflect these changes.
 
+# Installation of Debian init scripts
+The following was tested on Debian 6
+* Unzip files to /usr/lib/unifi_lab/
+* Copy '''unifi_lab_production.ini''' to /etc/unifi_lab/unifi_lab.ini and modify for your environment
+* ln -s /usr/lib/unifi_lab/unifi_lab.init /etc/init.d/unifi_lab
+* update-rc.d unifi_lab defaults
+
+Now you can use /etc/init.d/unifi_lab start|stop|restart
+
 # Configuration
-## Overall
-The '''unifi_lab.init.config''' file contains the related parameters of UniFi-Lab features.
-* Lines start with # are comments.
-* The format is ''PARAM=VALUE'', there is '''no''' space on the left and right-hand side of the '''='''.
-* These set controller ip address, login id and password
-** ''CTLR_ADDR=192.168.1.100''
-** ''CTLR_USERNAME=hello''
-** ''CTLR_PASSWORD=world''
-* Use "True" or "False" to enable or disable a feature. This is '''case-sensitive'''.
-** ''FEATURE_MAC_AUTH=True''
-** ''FEATURE_POOR_SIGNAL_RECONN=True''
-** ''FEATURE_SSID_SCH=True''
-** "FEATURE_PERIODIC_REBOOT=True"
-## For '''MAC addresses white list''' feature
-* There are no other parameters for MAC_AUTH. The white list file, '''unifi_lab_mac_auth.list''', has allowed MAC addresses, '''one MAC address one line'''. The UniFi-Lab will ask the controller to block any MAC that is not on the list. The white list file can be changed on the fly (meaning the UniFi-Lab reloads file constantly)
-## For '''Poor signals reconnect''' feature
-* ''POOR_SIGNAL_BASE=Signal'' or ''POOR_SIGNAL_BASE=RSSI''. You can reconnect a client based on its Signal Strength or RSSI (RSSI = Signal Strength - Noise Floor).
-* ''SIGNAL_THRESHOLD=N'', depends on what you have set for the base, ''N'' is the threshold value. For example, if the base is set to Signal and threshold is -65, that means the UniFi-Lab will concern those clients who has signal strength below -65 dBm.
-* ''SIGNAL_THRESHOLD_SECONDS=M''. The controller will reconnect this client if it falls below the threshold for ''M'' seconds. For example, ''SIGNAL_THRESHOLD_SECONDS=10'' means 10 seconds.
-## For '''WLANs on/off schedule''' feature
-* ''AP_NAME_PREFIX=''          (set to this will affect all APs on the controller)
-* ''AP_NAME_PREFIX=Office''  (set to this will affect all APs with the name starts "Office")
-** AP name filter, only APs with this prefix will be controlled by ssid scheduler
-* ''WLAN_LIST=wlan1,wlan2,wlan3,wlan4''. This is a list of WLANs that will be controlled by the scheduler, separated by comma ','.
-* ''MONDAY_ON=09:00''
-* ''MONDAY_OFF=19:00''
-* ''TUESDAY_ON=09:00''
-* ''TUESDAY_OFF=19:00''
-* ''WEDNESDAY_ON=09:00''
-* ''WEDNESDAY_OFF=19:00''
-* ''THURSDAY_ON=09:00''
-* ''THURSDAY_OFF=19:00''
-* ''FRIDAY_ON=09:00''
-* ''FRIDAY_OFF=19:00''
-* ''SATURDAY_ON=09:00''
-* ''SATURDAY_OFF=19:00''
-* ''SUNDAY_ON=09:00''
-* ''SUNDAY_OFF=19:00''
-** The on/off scheduler in 24-hr format.
-** For fully ON day (AP enabled entire day), set ON time to 00:00 and OFF time to 24:00.
-** For fully OFF day (AP disabled entire day), set ON time to 24:00 and OFF time to 24:00.
-** For example, if a restaurant is taking off every Tuesday, the config will be written like this
-*** ''WEDNESDAY_ON=11:00''
-*** ''WEDNESDAY_OFF=21:00''
-*** ''THURSDAY_ON=24:00''
-*** ''THURSDAY_OFF=24:00''
-*** ''FRIDAY_ON=11:00''
-*** ''FRIDAY_OFF=21:00''
-** For another example, say if a store is going to open from Wednesday 15:00 all the way to Friday 21:00, the config will be written like this
-*** ''WEDNESDAY_ON=15:00''
-*** ''WEDNESDAY_OFF=24:00''
-*** ''THURSDAY_ON=00:00''
-*** ''THURSDAY_OFF=24:00''
-*** ''FRIDAY_ON=00:00''
-*** ''FRIDAY_OFF=21:00''
-===For '''"Periodic Reboot"''' feature===
-* ''REBOOT_AP_NAME_PREFIX=''          (set to this will affect all APs on the controller)
-* ''REBOOT_AP_NAME_PREFIX=Office''  (set to this will affect all APs with the name starts "Office")
-** REBOOT_AP name filter, only APs with this prefix will be rebooted by Periodic Reboot feature
-* ''REBOOT_DAYS=Mon,Tue,Wed,Thu,Fri,Sat,Sun''	=> select which days (Case Sensitive) you want APs to be rebooted, separated by comma ','
-* ''REBOOT_TIME=23:00''			    (what time to reboot the APs, in 24-hr time format)
+The '''/etc/unifi_lab/unifi_lab.ini''' file contains the related parameters of UniFi-Lab features. Lines that start with ; are comments.
+## [General] Section
+The [General] section does not need changes unless you want your log or pid files in another location or with a different name
+## [Controller] section
+You must fill in the [Controller] section to point to your UniFi server.  These set controller ip address, login id and password
+* controllerHost = 192.168.1.100
+* controllerUsername = hello
+* controllerPassword = world
+
+## [Mail] section
+Use the [Mail] section to configure email alerts
+## [Feature] section
+This section enables or disables unifi_lab features.  Use "True" or "False" values (Note: values are case sensitive)
+## MAC addresses white list feature
+There are no other parameters for MAC_AUTH. The white list file "unifi_lab_mac_auth.list" has allowed MAC addresses.  One MAC address per line. The UniFi-Lab will ask the controller to block any MAC that is not on the list. The white list file can be changed on the fly (meaning the UniFi-Lab reloads file constantly)
+## Poor signals reconnect feature
+* poorSignalBase = [Signal|RSSI].  You can reconnect a client based on its Signal Strength or RSSI (RSSI = Signal Strength - Noise Floor).
+* poorSignalThreshold = N.  This depends on what you have set for the base, "N" is the threshold value. For example, if the base is set to Signal and threshold is -65, that means the UniFi-Lab will concern those clients who has signal strength below -65 dBm.
+* poorSignalThresholdSeconds = M.  The controller will reconnect this client if it falls below the threshold for ''M'' seconds. For example, "poorSignalThresholdSeconds = 10" means 10 seconds.
+
+## WLANs on/off schedule feature
+* onOffScheduleApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
+* onOffScheduleWlanList = wlan1,wlan2,wlan3,wlan4.  This is a list of WLANs that will be controlled by the scheduler, separated by a comma ",".
+* onOffScheduleWlanOverrideOffList = wlan5,wlan6.  This is a list of WLANs that will be overridden to off permanently for these APs, separated by comma ','
+* onOffScheduleMonday = 09:00-19:00
+* onOffScheduleTuesday = 09:00-19:00
+* onOffScheduleWednesday = 09:00-19:00
+* onOffScheduleTursday = 09:00-19:00
+* onOffScheduleFriday = 09:00-19:00
+* onOffScheduleSaturday = 09:00-19:00
+* onOffScheduleSunday= 09:00-19:00
+* Above is the on/off schedule in 24-hr format.  Note: For fully ON day (AP enabled entire day), set to 00:00-24:00.  For fully OFF day (AP disabled entire day), set to 24:00-24:00.
+
+## For Periodic Reboot feature
+* periodicRebootApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
+* periodicRebootDays = Mon,Tue,Wed,Thu,Fri,Sat,Sun.  Select which days (Case Sensitive) you want APs to be rebooted, separated by a comma ','
+* periodicRebootTime = 23:30.  Time to reboot the APs, in 24-hr time format.
 
 # Notes
 ## MAC Addresses White List
 * If a MAC address is already blocked in the controller, adding it to the white list file will '''NOT''' automatically grant its access. The admin needs to manually "unblock" the MAC from the controller.
+
 ## POOR_SIGNAL_RECONN
 * If a client is right at the borderline, you might risk reconnecting that client all the time and not able to service it at all. Enabling this feature may harm serviceability.
+
 ## SSID On/Off Scheduler
 * To run this,  the AP config should '''NOT''' have any WLANs that are overrode with custom configurations.
 * When the scheduler turns on/off of the WLANs in the list, other WLANs (those not in the list) will drop for a short moment.
+
 ## AP Periodic Reboot
 * All selected APs will be reboot at the same time. There will be '''NO''' service during this time (~1 minute).
 * This is controller asking APs to restart at the given time. The APs does '''NOT''' restart by itself.
