@@ -31,6 +31,8 @@ import json
 import time
 from urllib import urlencode
 import urllib2
+import ssl
+import cookielib
 
 class MyCtlr:
     ###############################################################
@@ -51,18 +53,13 @@ class MyCtlr:
         self.ctlr_username = ctlr_web_id
         self.ctlr_password = ctlr_web_pw
         self.ctlr_url = "https://"+ip+":8443/"
-        self._cookie=None
 
     ###############################################################
     ## CONTROLLER FUNCTIONS                                      ##
     ###############################################################
     def curl(self,func,data=None):
         """ Need to make error checking"""
-        req = urllib2.Request(self.ctlr_url+func,data)
-        if self._cookie:
-            req.add_header("set-cookie", self._cookie)
-        uo=urllib2.urlopen(req)
-        self._cookie = uo.headers.dict.get('set-cookie', self._cookie)
+        uo=urlopener.open(self.ctlr_url+func, data)
         d = uo.read()
         return d
 
@@ -250,4 +247,5 @@ class MyCtlr:
         except ValueError:
             pass
 print "installing handler for correct redirect"
-urllib2.install_opener(urllib2.build_opener(urllib2.HTTPCookieProcessor()))
+urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar(cookielib.DefaultCookiePolicy())), urllib2.HTTPSHandler(context=ssl._create_unverified_context()))
+urllib2.install_opener(urlopener)
