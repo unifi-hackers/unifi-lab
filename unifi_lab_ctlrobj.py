@@ -1,7 +1,7 @@
 #############################################################################
-## UniFi-Lab v0.0.2                                                        ##
+## UniFi-Lab v0.0.3                                                        ##
 #############################################################################
-##Copyright (c) 2012, Ubiquiti Networks
+##Copyright (c) 2016, Ubiquiti Networks
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -34,35 +34,32 @@ import urllib2
 import ssl
 import cookielib
 
+from unifi.controller import Controller
+
 class MyCtlr:
     ###############################################################
     ## CONTROLLER PARAMETERS                                     ##
     ###############################################################
-    curl = ""
     ctlr_ip = ""
     ctlr_username = ""
     ctlr_password = ""
     ctlr_url = ""
-    debug = 0
+    debug = 1
 
     ###############################################################
     ## Initialization                                            ##
     ###############################################################
-    def __init__(self, ip, ctlr_web_id, ctlr_web_pw):
+    def __init__(self, ip, ctlr_web_id, ctlr_web_pw, ctrl_web_port, ctrl_web_version):
         self.ctlr_ip = ip
         self.ctlr_username = ctlr_web_id
         self.ctlr_password = ctlr_web_pw
-        self.ctlr_url = "https://"+ip+":8443/"
+        #self.ctlr_url = "https://"+ip+":8443/"
+        self.ctrl_web_port = ctrl_web_port
+        self.ctrl_web_version = ctrl_web_version
 
     ###############################################################
     ## CONTROLLER FUNCTIONS                                      ##
     ###############################################################
-    def curl(self,func,data=None):
-        """ Need to make error checking"""
-        uo=urlopener.open(self.ctlr_url+func, data)
-        d = uo.read()
-        return d
-
     def make_datastr(self, ll):
         dstr = ""
         for couple in ll:
@@ -80,39 +77,63 @@ class MyCtlr:
         return json.loads(json.dumps(decoded["data"]))
 
     def ctlr_login(self):
-        return self.curl ("login", self.make_datastr([["login","login"],["username",self.ctlr_username],["password",self.ctlr_password]]))
+        self.c = Controller(self.ctlr_ip,self.ctlr_username,self.ctlr_password,self.ctrl_web_port,self.ctrl_web_version)
+        return self.c
 
     def ctrl_stat_user_blocked(self):
-        return self.curl("api/list/user", "json={\"blocked\":true}")
+        users = self.c.get_users()
+	blocked = []
+        for user in users:
+             if user.has_key('blocked'):
+                  if str(user['blocked']) == 'True':
+                       blocked.append(user)
+        return blocked
 
     def ctrl_list_group_members(self,group_id):
-        return self.curl("api/list/user", "json="+json.dumps({'usergroup_id':group_id}))
+        users = self.c.get_users()
+	group_users = []
+        for user in users:
+             if user.has_key('usergroup_id'):
+                  if str(user['usergroup_id']) == group_id:
+                       group_users.append(user)
+        return group_users
+
+    def ctrl_list_essid_members(self,essid_id):
+        users = self.c.get_clients()
+	group_users = []
+        for user in users:
+             if user.has_key('essid'):
+                  if str(user['essid']) == essid_id:
+                       group_users.append(user)
+        return group_users
 
     def ctrl_list_group(self):
         grouplist={}
-        for g in self.decode_json(self.curl("api/list/usergroup")):
-            grouplist[g['name']]=g
+        grouplist = self.c.get_user_groups()
         return grouplist
 
     def ctlr_stat_device(self):
-        return self.curl( "api/stat/device", self.make_datastr([["json",self.make_jsonstr([["_depth","2"],["test","null"]])]]) )
+        aps = self.c.get_aps()
+        return aps
 
     def ctlr_stat_sta(self):
-        return self.curl("api/stat/sta")
+        clients = self.c.get_clients()
+        return clients
 
     def ctlr_wlan_conf(self):
-        return self.curl("api/list/wlanconf")
+        wlan_conf = self.c.get_wlan_conf()
+        return wlan_conf
 
     def ctlr_reboot_ap(self, apnamefilter=""):
         aplist = self.ctlr_stat_device()
         try:
-            for ap in self.decode_json(aplist):
+            for ap in aplist:
                 if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if (ap.has_key('name') and ap['name'].startswith(apnamefilter)) or not ap.has_key('name'):
                     if ap.has_key('name'): print "Rebooting AP:", ap['name']
                     if not ap.has_key('name'): print "Rebooting AP:", ap['mac']
-                    self.ctlr_mac_cmd(ap['mac'],"restart")
+                    self.c.restart_ap(ap['mac'])
         except ValueError:
             pass        
 
@@ -121,7 +142,7 @@ class MyCtlr:
         wlanlist = self.ctlr_wlan_conf()
         if self.debug>0: print "Configure all Wireless LANs status to", en
         try:
-            for ap in self.decode_json(aplist):
+            for ap in self.aplist:
                 if not ap.has_key('state') or ap['state'] != 1:
                     continue
                 if ap.has_key('name') and ap['name'].startswith(apnamefilter):
@@ -131,77 +152,22 @@ class MyCtlr:
         except ValueError:
             pass
 
-    # this function maintains enable/disable state of wlan, but will restore any security that was being overrided
-    def ctlr_enabled_wlans(self, apname, target_wlan=[], en=True, aplist="", wlanlist="", wlans_forced_off=[]):
-        if aplist == "": aplist = self.ctlr_stat_device()
-        if wlanlist == "": wlanlist = self.ctlr_wlan_conf()
-        owlan = []
-        try:
-            for ap in self.decode_json(aplist):
-                twlan = list(target_wlan)
-                if not ap.has_key('state') or ap['state'] != 1:
-                    continue
-                if (ap.has_key('name') and apname == ap['name']) or (not ap.has_key('name') and apname == ap['mac']):
-                    if len(twlan) > 0:
-                        if ap['model'] == "U2O" or ap['model'] == "BZ2" or ap['model'] == "U7P":
-                            for wlan in self.decode_json(wlanlist):
-                                wlan['radio']='ng'
-                                wlan['wlan_id']=wlan['_id']
-                                del wlan['_id']
-                                if wlan['name'] in twlan:
-                                    wlan['enabled']=en                            
-                                    owlan.append(wlan)
-                                if wlan['name'] in wlans_forced_off:
-                                    wlan['enabled']=False
-                                    owlan.append(wlan)
-                        if ap['model'] == "U5O" or ap['model'] == "U7P":
-                            for wlan in self.decode_json(wlanlist):
-                                wlan['radio']='na'
-                                wlan['wlan_id']=wlan['_id']
-                                del wlan['_id']
-                                if wlan['name'] in twlan:
-                                    wlan['enabled']=en
-                                    owlan.append(wlan)
-                                if wlan['name'] == "Neenah" or wlan['name'] == "Neenah-priv":
-                                    wlan['enabled']=False
-                                    owlan.append(wlan)
-                    if self.debug>0 and ap.has_key('name'): print ap['name'], "all WLANs change to", en
-                    if self.debug>0 and not ap.has_key('name'): print ap['mac'], "all WLANs change to", en
-                    curlcmddata = self.make_datastr([["json",json.dumps(dict(wlan_overrides=owlan)).replace("\"",'%22')]])
-                    curlcmdfunc = "api/upd/device/" + ap['_id']
-                    if self.debug>0: print curlcmdfunc+" "+curlcmddata
-                    if self.debug>0:
-                        print self.curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
-                    else:
-                        self.curl(curlcmdfunc,curlcmddata)#os.popen(curlcmd).read()
-                    return True
-        except ValueError:
-            pass
-        return False
-
     def ctlr_mac_cmd(self, target_mac, command):
-        curlfunc="api/cmd/stamgr"
         if command == "block":
-            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="block-sta")).replace("\"",'%22')]])
+            self.c.block_client(target_mac)
         elif command == "unblock":
-            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="unblock-sta")).replace("\"",'%22')]])
+            self.c.unblock_client(target_mac)
         elif command == "reconnect":
-            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="kick-sta")).replace("\"",'%22')]])
+            self.c.disconnect_client(target_mac)
         elif command == "restart":
-            curlfunc="api/cmd/devmgr"
-            curlcmd = self.make_datastr([["json",json.dumps(dict(mac=target_mac,cmd="restart")).replace("\"",'%22')]])
-        if self.debug>0: print curlcmd
-        if self.debug>0:
-            print self.curl(curlfunc, curlcmd)
-        else:
-            self.curl(curlfunc, curlcmd)
+            self.c.restart_ap(target_mac)
         return True
 
     def ctlr_get_ap_stat_field(self, apname, tag, aplist=""):
         if aplist=="":
             aplist = self.ctlr_stat_device()
         try:
-            for ap in self.decode_json(aplist):
+            for ap in self.aplist:
                 if ap.has_key('name') and apname == ap['name']:
                     return ap[tag]
         except ValueError:
@@ -212,7 +178,7 @@ class MyCtlr:
         if stalist=="":
             stalist = self.ctlr_stat_sta()
         try:
-            for sta in self.decode_json(stalist):
+            for sta in stalist:
                 if sta.has_key('mac') and stamac == sta['mac']:
                     rtag = []
                     for t in tag:
@@ -226,7 +192,7 @@ class MyCtlr:
         if stalist=="":
             stalist = self.ctlr_stat_sta()
         try:
-            for sta in self.decode_json(stalist):
+            for sta in stalist:
                 if sta.has_key('mac'):
                     sta_mac_list.append(sta['mac'])
         except ValueError:
@@ -236,9 +202,8 @@ class MyCtlr:
     def ctlr_get_sta_stat_fields_by_name(self, name, tag, stalist=""):
         if stalist=="":
             stalist = self.ctlr_stat_sta()
-        #print str(stalist)
         try:
-            for sta in self.decode_json(stalist):
+            for sta in self.stalist:
                 if sta.has_key('hostname') and name == sta['hostname']:
                     rtag = []
                     for t in tag:
@@ -246,6 +211,3 @@ class MyCtlr:
                     return rtag
         except ValueError:
             pass
-print "installing handler for correct redirect"
-urlopener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar(cookielib.DefaultCookiePolicy())), urllib2.HTTPSHandler(context=ssl._create_unverified_context()))
-urllib2.install_opener(urlopener)

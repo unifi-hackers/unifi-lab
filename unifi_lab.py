@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 #############################################################################
-## UniFi-Lab v0.0.2                                                        ##
+## UniFi-Lab v0.0.3                                                        ##
 #############################################################################
-##Copyright (c) 2012, Ubiquiti Networks
+##Copyright (c) 2016, Ubiquiti Networks
 ##All rights reserved.
 ##
 ##Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,7 @@
     Ubiquiti Networks UniFi-Lab consists of following tools:
         1. MAC list authentication
         2. Poor Signal Quality reconnection (based on Signal Strength or RSSI value)
-        3. SSID schedule on/off
-        4. Periodic reboot APs (introduced in v0.0.2)
+        3. Periodic reboot APs
         
     usage: unifi_lab [start|stop|restart] <options>
 
@@ -149,7 +148,9 @@ class UniFiLab:
         self._config = configManager
         self._ctlr = unifi_lab_ctlrobj.MyCtlr(configManager.getControllerHost(),
                                               configManager.getControllerUsername(),
-                                              configManager.getControllerPassword())
+                                              configManager.getControllerPassword(),
+                                              configManager.getControllerPort(),
+                                              configManager.getControllerVersion())
         self.interval = configManager.getInterval()
         # do a first login to make sure we can conect to the controller, before going to the background
         # FIXME: does not raise a exception if login does not work
@@ -181,11 +182,12 @@ class UniFiLab:
             if m['mac']:
                 mac_auth_list.append(m['mac'].lower().replace('-',':'))
             if m['whitegroup']:
-                str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
+                #str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
+                str_whitelist = self._ctlr.ctrl_list_essid_members(m['whitegroup'])
                 mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
                 mac_auth_list = mac_auth_list + mac_whitelist                
             pass
-#        print "whitelist:%s"%mac_auth_list
+        #print "whitelist:%s"%mac_auth_list
 
         cur_asso_list = self._ctlr.ctlr_get_all_sta_mac(self._stationList)
         for mac in cur_asso_list:
@@ -198,7 +200,7 @@ class UniFiLab:
  
         str_blockedlist = self._ctlr.ctrl_stat_user_blocked()
         mac_blockedlist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_blockedlist)
-#        print "blacklist:%s"%mac_blockedlist
+        #print "blacklist:%s"%mac_blockedlist
         for mac in mac_auth_list:
             if mac in mac_blockedlist:
                 log.info("[MAC Auth] This MAC needs to be unblocked: %s", mac)
@@ -248,39 +250,6 @@ class UniFiLab:
                 self._stationRssi[mac] = time.time()
         return
 
-    # Monday_ON and Monday_OFF time, all the way to Sunday
-    def doSsidOnOffSchedule(self):
-        def openHour(on, off):
-            """
-                this function decides if the Wifi is on or off
-            """
-            # on/off time in 24-Hour format. For example, 08:15 and 19:30
-            now = time.strftime("%H:%M", time.localtime())
-            [on_hour,on_min] = on.split(':')
-            [off_hour,off_min] = off.split(':')
-            [cur_hour,cur_min] = now.split(':')
-            if cur_hour > off_hour:
-                return False
-            elif cur_hour == off_hour and cur_min > off_min:
-                return False
-            if cur_hour < on_hour:
-                return False
-            elif cur_hour == on_hour and cur_min < on_min:
-                return False
-            return True        
-        
-        """
-            this checks the day of the week and calls than openHour to check if need need to be
-            on or off
-        """
-        power_on_time, power_off_time = self._config.getOnOffScheduleForToday()
-        if openHour(power_on_time, power_off_time):
-            log.info("[SSID Sche] Now is OPEN")
-            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),True,self._config.getOnOffScheduleWlanOverrideOffList())
-        else:
-            log.info("[SSID Sche] NOW is CLOSED")
-            self._ctlr.ctlr_enabled_wlans_on_all_ap(self._config.getOnOffScheduleApNamePrefix(),self._config.getOnOffScheduleWlanList(),False,self._config.getOnOffScheduleWlanOverrideOffList())
-
     def doPeriodicReboot(self):
         """
             this function is responsible for rebooting the UAPs at the specified time
@@ -314,7 +283,6 @@ class UniFiLab:
         
 
         # FIXME: the i3 und i4 stuff is not clean, need to clean it up later
-        i3 = 0
         i4 = 0
 
         while True:
@@ -332,16 +300,10 @@ class UniFiLab:
                 if self._config.getEnablePoorSignalReconnect():
                     self.doPoorSignalReconnect()
 
-                if self._config.getEnableSsidOnOffSchedule() and i3 > 11:       # do this once a minute is good enough, thus i3 > 11
-                    self.doSsidOnOffSchedule()
-                    i3 = 0
-                i3 = i3 + 1
-
                 if self._config.getEnablePeriodicReboot() and i4 > 11:
                     self.doPeriodicReboot()
                     i4 = 0
                 i4 = i4 + 1
-                
                 
                 # make sure that we runn every x seconds (including the time it took to work
                 sleepTime = self.interval + 1 - (time.time() - startTime)

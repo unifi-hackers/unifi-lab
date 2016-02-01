@@ -125,17 +125,7 @@ There are no other parameters for MAC_AUTH. The white list file "unifi_lab_mac_a
 * poorSignalThresholdSeconds = M.  The controller will reconnect this client if it falls below the threshold for ''M'' seconds. For example, "poorSignalThresholdSeconds = 10" means 10 seconds.
 
 ## WLANs on/off schedule feature
-* onOffScheduleApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
-* onOffScheduleWlanList = wlan1,wlan2,wlan3,wlan4.  This is a list of WLANs that will be controlled by the scheduler, separated by a comma ",".
-* onOffScheduleWlanOverrideOffList = wlan5,wlan6.  This is a list of WLANs that will be overridden to off permanently for these APs, separated by comma ','
-* onOffScheduleMonday = 09:00-19:00
-* onOffScheduleTuesday = 09:00-19:00
-* onOffScheduleWednesday = 09:00-19:00
-* onOffScheduleTursday = 09:00-19:00
-* onOffScheduleFriday = 09:00-19:00
-* onOffScheduleSaturday = 09:00-19:00
-* onOffScheduleSunday= 09:00-19:00
-* Above is the on/off schedule in 24-hr format.  Note: For fully ON day (AP enabled entire day), set to 00:00-24:00.  For fully OFF day (AP disabled entire day), set to 24:00-24:00.
+Feature removed due to original Unifi support
 
 ## For Periodic Reboot feature
 * periodicRebootApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
