@@ -47,7 +47,6 @@ class ConfigManager:
     def getConfigFile(self):
         return self._configFile
         
-        
     # General
     def getPidFile(self):
         return self._config.get("General", "pidFile")
@@ -76,7 +75,6 @@ class ConfigManager:
 
     def getControllerVersion(self):
         return self._config.get("Controller", "controllerVersion")      
-
         
     # Mail    
     def getFromAddress(self):
@@ -90,7 +88,6 @@ class ConfigManager:
 
     def getSmtpServer(self):
         return self._config.get("Mail", "smtpServer")
-          
           
     # Feature
     def getEnableMacAuth(self):

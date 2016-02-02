@@ -182,7 +182,6 @@ class UniFiLab:
             if m['mac']:
                 mac_auth_list.append(m['mac'].lower().replace('-',':'))
             if m['whitegroup']:
-                #str_whitelist = self._ctlr.ctrl_list_group_members(groups[m['whitegroup']]['_id'])
                 str_whitelist = self._ctlr.ctrl_list_essid_members(m['whitegroup'])
                 mac_whitelist = self._ctlr.ctlr_get_all_sta_mac(stalist=str_whitelist)
                 mac_auth_list = mac_auth_list + mac_whitelist                

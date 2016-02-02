@@ -5,15 +5,12 @@ like a text-version browser, and is controlled by python scripts. You can think
 of UniFi-Lab as a robot IT that always monitors the controller and takes actions
 when needed.
 
-UniFi lab was initially made available through Ubiquiti Networks as example
-how to instrument the UniFi API. As of writing thanks to this code drop others
-have been inspired to create (even cleaner) interfaces to the UniFi API. For 
-example have please have a look at Jakob Borg's unifi-api for Python 
+These version is using  UniFi API interface. For example have please have a look at Jakob Borg's unifi-api for Python 
 (https://github.com/calmh/unifi-api).
 
 # Features
 ## MAC Addresses White List
-The UniFi controller will block any MAC that is not on the list.
+The UniFi controller will block any MAC that is not on the list. You can alse configure SSID where MAC will be NOT blocked ("Guest WiFi").
 
 ## Poor Signals Reconnect
 The UniFi controller will kick (aka reconnect) any stations that fall below 
@@ -30,10 +27,6 @@ block a station every time it falls below a threshold. If we do that, we then
 have no idea when the station is back into the range. At this moment, only a 
 connected station can be told RSSI on controller, it is a chicken and egg problem.
 
-## WLAN On/Off Schedule
-The UniFi controller will turn on/off selected WLANs on selected APs based on 
-the specified daily schedules.
-
 ## AP Periodic Reboot
 The controller will reboot selected APs on the specified days and time.
 
@@ -41,7 +34,7 @@ The controller will reboot selected APs on the specified days and time.
 The UniFi-Lab utility needs to interact with the UniFi controller, therefore 
 '''UniFi controller must be up and running'''. It also needs these two software installed
 * Python 2.x
-* Curl
+* unifi-api
 
 Below we demonstrate installation steps in different operating systems.
 
@@ -86,6 +79,8 @@ There are four files included in the UniFi-Lab,
 Create a directory and put above files under it.
 Copy '''unifi_lab_production.ini''' to /etc/unifi_lab/unifi_lab.ini and modify for your environment
 
+Install unifi-api interface (https://github.com/calmh/unifi-api)
+
 For Windows, make sure that curl.exe is also under the same folder.
 
 # Execution
@@ -108,10 +103,12 @@ The '''/etc/unifi_lab/unifi_lab.ini''' file contains the related parameters of U
 ## [General] Section
 The [General] section does not need changes unless you want your log or pid files in another location or with a different name
 ## [Controller] section
-You must fill in the [Controller] section to point to your UniFi server.  These set controller ip address, login id and password
+You must fill in the [Controller] section to point to your UniFi server.  These set controller ip address, login id, password, port and version
 * controllerHost = 192.168.1.100
 * controllerUsername = hello
 * controllerPassword = world
+* controllerPort = 8443
+* controllerVersion = v4
 
 ## [Mail] section
 Use the [Mail] section to configure email alerts
@@ -124,9 +121,6 @@ There are no other parameters for MAC_AUTH. The white list file "unifi_lab_mac_a
 * poorSignalThreshold = N.  This depends on what you have set for the base, "N" is the threshold value. For example, if the base is set to Signal and threshold is -65, that means the UniFi-Lab will concern those clients who has signal strength below -65 dBm.
 * poorSignalThresholdSeconds = M.  The controller will reconnect this client if it falls below the threshold for ''M'' seconds. For example, "poorSignalThresholdSeconds = 10" means 10 seconds.
 
-## WLANs on/off schedule feature
-Feature removed due to original Unifi support
-
 ## For Periodic Reboot feature
 * periodicRebootApNamePrefix = [empty|prefix].  Leave this empty for all APs, or give an alias prefix to only affect those APs.
 * periodicRebootDays = Mon,Tue,Wed,Thu,Fri,Sat,Sun.  Select which days (Case Sensitive) you want APs to be rebooted, separated by a comma ','
@@ -135,6 +129,7 @@ Feature removed due to original Unifi support
 # Notes
 ## MAC Addresses White List
 * If a MAC address is already blocked in the controller, adding it to the white list file will '''NOT''' automatically grant its access. The admin needs to manually "unblock" the MAC from the controller.
+* You can alse declare not filtered SSID network putting "IGNORED SSID" string into MAC filter file.
 
 ## POOR_SIGNAL_RECONN
 * If a client is right at the borderline, you might risk reconnecting that client all the time and not able to service it at all. Enabling this feature may harm serviceability.

@@ -44,7 +44,7 @@ class MyCtlr:
     ctlr_username = ""
     ctlr_password = ""
     ctlr_url = ""
-    debug = 1
+    debug = 0
 
     ###############################################################
     ## Initialization                                            ##
@@ -53,7 +53,6 @@ class MyCtlr:
         self.ctlr_ip = ip
         self.ctlr_username = ctlr_web_id
         self.ctlr_password = ctlr_web_pw
-        #self.ctlr_url = "https://"+ip+":8443/"
         self.ctrl_web_port = ctrl_web_port
         self.ctrl_web_version = ctrl_web_version
 
