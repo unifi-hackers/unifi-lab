@@ -47,7 +47,6 @@ class ConfigManager:
     def getConfigFile(self):
         return self._configFile
         
-        
     # General
     def getPidFile(self):
         return self._config.get("General", "pidFile")
@@ -70,7 +69,12 @@ class ConfigManager:
         
     def getControllerPassword(self):
         return self._config.get("Controller", "controllerPassword", raw=True)      
-        
+
+    def getControllerPort(self):
+        return self._config.get("Controller", "controllerPort")      
+
+    def getControllerVersion(self):
+        return self._config.get("Controller", "controllerVersion")      
         
     # Mail    
     def getFromAddress(self):
@@ -85,16 +89,12 @@ class ConfigManager:
     def getSmtpServer(self):
         return self._config.get("Mail", "smtpServer")
           
-          
     # Feature
     def getEnableMacAuth(self):
         return self._config.getboolean("Feature", "enableMacAuth")
         
     def getEnablePoorSignalReconnect(self):
         return self._config.getboolean("Feature", "enablePoorSignalReconnect")
-        
-    def getEnableSsidOnOffSchedule(self):
-        return self._config.getboolean("Feature", "enableSsidOnOffSchedule")
         
     def getEnablePeriodicReboot(self):
         return self._config.getboolean("Feature", "enablePeriodicReboot")
@@ -114,22 +114,6 @@ class ConfigManager:
         
     def getPoorSignalThresholdSeconds(self):
         return self._config.getint("PoorSignalReconnect", "poorSignalThresholdSeconds")
-    
-          
-    # SsidOnOffSchedule
-    def getOnOffScheduleApNamePrefix(self):
-        return self._config.get("SsidOnOffSchedule", "onOffScheduleApNamePrefix")
-
-    def getOnOffScheduleWlanList(self):
-        return self._config.get("SsidOnOffSchedule", "onOffScheduleWlanList").split(',')
-        
-    def getOnOffScheduleWlanOverrideOffList(self):
-        return self._config.get("SsidOnOffSchedule", "onOffScheduleWlanOverrideOffList").split(',')
-
-    def getOnOffScheduleForToday(self):
-        """ return the schedule for today """
-        return self._config.get("SsidOnOffSchedule", mapSchedule[int(time.strftime("%w", time.localtime()))]).split("-")
-
     
     # PeriodicReboot
     def getPeriodicRebootApNamePrefix(self):
@@ -154,7 +138,6 @@ def main():
     print myConfigManager.getToAddresses()
     print myConfigManager.getLogFile()
     print myConfigManager.getEnablePeriodicReboot()
-    print myConfigManager.getOnOffScheduleForToday()
     print myConfigManager.getRebootToday()
     print myConfigManager.getInterval()
     
